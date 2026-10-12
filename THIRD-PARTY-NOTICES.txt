@@ -1,0 +1,30 @@
+PolyPeek3D includes the following third-party components.
+
+three.js (three.min.js, OrbitControls, GLTF/FBX/OBJ/MTL/STL/PLY/Collada/3DS/3MF/AMF/TGA loaders)
+  Copyright 2010-2021 three.js authors. License: MIT.  https://github.com/mrdoob/three.js
+
+fflate (fflate.min.js, v0.6.9)
+  Copyright (c) 2020 Arjun Barrett. License: MIT.  https://github.com/101arrowz/fflate
+
+meshoptimizer decoder (meshopt_decoder.js)
+  Copyright (C) 2016-2020 Arseny Kapoulkine. License: MIT.  https://github.com/zeux/meshoptimizer
+
+Draco decoder (draco_decoder.wasm, draco_wasm_wrapper.js)
+  Copyright Google Inc. License: Apache License 2.0.  https://github.com/google/draco
+  Full license text: licenses\license.draco-apache-2.0.txt
+
+occt-import-js (occt-import-js.js, occt-import-js.wasm, step-worker.js loads them) - reads STEP / STP files
+  Copyright (c) Viktor Kovacs. License: LGPL-2.1.  https://github.com/kovacsv/occt-import-js
+  Built on Open CASCADE Technology (OCCT), Copyright (c) Open CASCADE SAS. License: LGPL-2.1 with the OCCT exception.
+  https://dev.opencascade.org
+  Full license texts: licenses\license.occt-import-js.txt and licenses\license.occt.txt
+  These two files are used unmodified and are shipped as separate files next to the program (not linked into it),
+  so you can replace them with another build of the same library.
+
+Microsoft Edge WebView2 SDK (Microsoft.Web.WebView2 NuGet package, WebView2Loader.dll)
+  Copyright (C) Microsoft Corporation. Distributed under the Microsoft WebView2 SDK license.
+  https://www.nuget.org/packages/Microsoft.Web.WebView2
+  The WebView2 Runtime itself is a separate Microsoft product, not included.
+
+The MIT License text is available in the LICENSE file of this distribution and
+in each project's repository linked above.

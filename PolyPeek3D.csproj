@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>PolyPeek3D</AssemblyName>
+    <RootNamespace>PolyPeek3D</RootNamespace>
+    <ApplicationIcon>icons\main.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The version lives in one place: the VERSION file. It goes into the exe (file properties, window title),
+         build-release.bat and the installer read it too. -->
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\VERSION').Trim())</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>PolyPeek3D</Product>
+    <AssemblyTitle>PolyPeek3D 3D model viewer</AssemblyTitle>
+    <Copyright>Copyright (c) 2026 IHSAN UZUNER</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- pinned: every build uses the same WebView2 SDK -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+  <!-- viewer.html and the js / wasm files from web\ are copied next to the exe (flat) -->
+  <ItemGroup>
+    <Content Include="web\*.html;web\*.js;web\*.wasm">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\*.ico">
+      <Link>icons\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

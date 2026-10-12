@@ -1,0 +1,3147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="darkreader-lock"> <!-- keep the Dark Reader extension away from this page -->
+  <meta name="color-scheme" content="dark">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PolyPeek3D</title>
+  <style>
+    :root {
+      --bg: #2b2b2b;
+      --fg: #e8e8e8;
+      --panel: #1c1c1ce6;
+      --acc: #e07b39;
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px)
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, Segoe UI, sans-serif;
+      overflow: hidden
+    }
+
+    #c {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block
+    }
+
+    #dock[hidden] {
+      display: none
+    }
+
+    #dock {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    #tl {
+      pointer-events: auto;
+      align-self: center;
+      width: min(560px, 100%);
+      box-sizing: border-box;
+      background: var(--panel);
+      border-radius: 10px;
+      padding: 8px 14px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px
+    }
+
+    #tl input[type=range] {
+      width: 100%;
+      flex: none;
+      margin: 0;
+      accent-color: var(--acc)
+    }
+
+    #tr {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+      font-size: .75rem;
+      font-variant-numeric: tabular-nums
+    }
+
+    #tr .l {
+      justify-self: start;
+      opacity: .75
+    }
+
+    #tr .r {
+      justify-self: end;
+      opacity: .75
+    }
+
+    #tc {
+      display: flex;
+      gap: 6px;
+      align-items: center
+    }
+
+    #tc button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      height: 28px;
+      padding: 0 8px
+    }
+
+    #tc #play {
+      min-width: 48px
+    }
+
+    #tg {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      padding: 3px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      border-radius: 9px
+    }
+
+    #spw {
+      position: relative
+    }
+
+    #tc #spd {
+      min-width: 58px;
+      gap: 5px;
+      font-size: .78rem
+    }
+
+    #tc #spd svg {
+      width: 9px;
+      height: 9px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: .7
+    }
+
+    #sp {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300px;
+      box-sizing: border-box;
+      background: #1c1c1cf5;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 10px;
+      padding: 10px 12px 8px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      z-index: 5
+    }
+
+    #sp[hidden] {
+      display: none
+    }
+
+    #sp .sph {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: .78rem
+    }
+
+    #sp .sph span {
+      opacity: .7
+    }
+
+    #sp .sph b {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums
+    }
+
+    #spb {
+      display: flex;
+      gap: 4px
+    }
+
+    #tc #spb button {
+      flex: 1;
+      min-width: 0;
+      height: 28px;
+      padding: 0;
+      font-size: .74rem;
+      font-variant-numeric: tabular-nums
+    }
+
+    #tc #spb button.on {
+      background: var(--acc);
+      color: #fff
+    }
+
+    #sps {
+      width: 100%;
+      margin: 0;
+      accent-color: var(--acc)
+    }
+
+    #sp .spr {
+      display: flex;
+      justify-content: space-between;
+      font-size: .68rem;
+      opacity: .55;
+      margin-top: -4px
+    }
+
+    #tc svg {
+      width: 12px;
+      height: 12px;
+      fill: currentColor;
+      display: block
+    }
+
+    /* mouse-driven app: no focus frames on controls */
+    button:focus,
+    input:focus,
+    label:focus {
+      outline: none
+    }
+
+    button:disabled {
+      opacity: .35;
+      cursor: default
+    }
+
+    button,
+    select,
+    label.b {
+      background: #444;
+      color: var(--fg);
+      border: 0;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font: inherit;
+      cursor: pointer
+    }
+
+    button.p {
+      background: var(--acc);
+      color: #fff
+    }
+
+    #drop {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      pointer-events: none;
+      font-size: 1.5rem;
+      opacity: .8;
+      padding: 20px
+    }
+
+    html.opening #drop {
+      display: none
+    }
+
+    html.opening #c {
+      visibility: hidden
+    }
+
+    /* opened with a file: the empty scene is not shown, so the camera does not jump when the model arrives */
+    #drop small {
+      font-size: .8rem
+    }
+
+    #lp {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      max-width: calc(100% - 200px)
+    }
+
+    #info {
+      font-size: .85rem;
+      opacity: .8;
+      min-width: 0
+    }
+
+    #lrow {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    #fb {
+      width: 34px;
+      height: 34px;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      background: #3a3a3acc;
+      color: #cfcfcf;
+      cursor: pointer
+    }
+
+    #fb:hover {
+      background: #4a4a4acc;
+      color: #fff
+    }
+
+    #fb svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round
+    }
+
+    #aw {
+      position: relative
+    }
+
+    #aw[hidden] {
+      display: none
+    }
+
+    #ab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 30px;
+      padding: 0 10px;
+      font-size: .8rem;
+      max-width: 280px
+    }
+
+    #abl {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    #ab svg {
+      width: 9px;
+      height: 9px;
+      flex: none;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: .7
+    }
+
+    #al {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 100%;
+      max-height: 50vh;
+      overflow: auto;
+      background: #1c1c1cf5;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 10px;
+      padding: 4px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-sizing: border-box
+    }
+
+    #al[hidden] {
+      display: none
+    }
+
+    #al button {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 18px;
+      text-align: left;
+      background: none;
+      padding: 7px 10px;
+      font-size: .8rem;
+      white-space: nowrap
+    }
+
+    #al button:hover {
+      background: #444
+    }
+
+    #al button.on {
+      background: var(--acc);
+      color: #fff
+    }
+
+    #al button small {
+      opacity: .65;
+      font-variant-numeric: tabular-nums
+    }
+
+    #rp {
+      position: absolute;
+      top: 12px;
+      right: 140px;
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    #rp button {
+      width: 100%
+    }
+
+    #gizmo {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 120px;
+      height: 120px;
+      touch-action: none
+    }
+
+    #rp button,
+    #lightb,
+    #gearb {
+      border-radius: 4px;
+      background: #3a3a3acc;
+      color: #8a8a8a;
+      position: relative;
+      overflow: hidden;
+      isolation: isolate
+    }
+
+    #rp button::before,
+    #lightb::before,
+    #gearb::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: var(--acc);
+      opacity: 0;
+      transition: opacity .15s;
+      pointer-events: none
+    }
+
+    #rp button.on::before,
+    #lightb.on::before,
+    #gearb.on::before {
+      opacity: 1
+    }
+
+    #rp button.on,
+    #gearb.on {
+      color: #fff
+    }
+
+    /* Blender-style shading group: wireframe (toggle) | solid - material (one of the two) */
+    .gr {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      border-radius: 7px
+    }
+
+    #rp .gr button,
+    #rp #shw>button {
+      flex: none;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .gr .sep {
+      width: 1px;
+      align-self: stretch;
+      margin: 3px 1px;
+      background: rgba(255, 255, 255, .18)
+    }
+
+    .gr svg,
+    #shw>button svg,
+    #lightb svg,
+    #gearb svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round
+    }
+
+    #lightb {
+      position: relative;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #lightb svg,
+    #gearb svg {
+      width: 20px;
+      height: 20px;
+      stroke-width: 1.8
+    }
+
+    #fps[hidden] {
+      display: none
+    }
+
+    #fps {
+      position: absolute;
+      right: 54px;
+      bottom: 12px;
+      z-index: 4;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      border-radius: 4px;
+      background: #3a3a3acc;
+      color: #8a8a8a;
+      font-size: .78rem;
+      font-variant-numeric: tabular-nums;
+      pointer-events: none;
+      user-select: none
+    }
+
+    #gearb {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      z-index: 4;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    #ortho .io {
+      display: none
+    }
+
+    #ortho.on .io {
+      display: block
+    }
+
+    #ortho.on .ip {
+      display: none
+    }
+
+    #ld {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(340px, 80vw);
+      box-sizing: border-box;
+      background: #1c1c1cf2;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, .5);
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none
+    }
+
+    #ld[hidden] {
+      display: none
+    }
+
+    /* While the loading card is up the whole window is locked: a dimmed layer over everything catches every click / wheel,
+       and the card sits on top of it. */
+    #lock {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      background: rgba(0, 0, 0, .45);
+      cursor: progress;
+      animation: lockIn .15s ease-out
+    }
+
+    #lock[hidden] {
+      display: none
+    }
+
+    @keyframes lockIn {
+      from {
+        opacity: 0
+      }
+    }
+
+    #ld {
+      z-index: 51
+    }
+
+    /* error card: shown when a model cannot be opened or the viewer crashed */
+    #err {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(420px, 86vw);
+      box-sizing: border-box;
+      background: #1c1c1cf8;
+      border: 1px solid rgba(255, 120, 90, .55);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, .55);
+      z-index: 7;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: .88rem
+    }
+
+    #err[hidden] {
+      display: none
+    }
+
+    #errt {
+      font-size: .95rem;
+      color: #ff9a85
+    }
+
+    #errx {
+      font-size: .74rem;
+      opacity: .6;
+      word-break: break-word;
+      user-select: text
+    }
+
+    #errb {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 4px
+    }
+
+    #errb button {
+      background: #333;
+      color: inherit;
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font: inherit;
+      cursor: pointer
+    }
+
+    #errb button:hover {
+      background: #444
+    }
+
+    #ldt {
+      font-size: .88rem
+    }
+
+    #ldb {
+      height: 6px;
+      border-radius: 3px;
+      background: #444;
+      overflow: hidden;
+      position: relative
+    }
+
+    #ldi {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0;
+      background: var(--acc);
+      border-radius: 3px;
+      transition: width .12s linear
+    }
+
+    #ldh {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    #lds {
+      display: none;
+      flex: none;
+      width: 18px;
+      height: 18px;
+      box-sizing: border-box;
+      border: 2px solid #555;
+      border-top-color: var(--acc);
+      border-radius: 50%;
+      animation: ldspin .8s linear infinite
+    }
+
+    #ld.ind {
+      width: auto;
+      min-width: 200px;
+      max-width: min(340px, 80vw)
+    }
+
+    #ld.ind #lds {
+      display: block
+    }
+
+    #ld.ind #ldb {
+      display: none
+    }
+
+    @keyframes ldspin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    #ldn {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: .76rem;
+      opacity: .7;
+      font-variant-numeric: tabular-nums
+    }
+
+    #ldname {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    #xp {
+      position: absolute;
+      width: 210px;
+      box-sizing: border-box;
+      background: #1c1c1cf5;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 10px;
+      padding: 8px 12px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: .8rem;
+      z-index: 5
+    }
+
+    #xp[hidden] {
+      display: none
+    }
+
+    #xp .xr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px
+    }
+
+    #xp #upz,
+    #xp #fpsb,
+    #xp #bfb {
+      background: none;
+      border-radius: 0;
+      padding: 4px 0;
+      width: 100%;
+      font-size: .8rem
+    }
+
+    .sw {
+      width: 30px;
+      height: 16px;
+      border-radius: 8px;
+      background: #555;
+      position: relative;
+      flex: none
+    }
+
+    .sw::after {
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 2px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ddd;
+      transition: transform .15s
+    }
+
+    #upz.on .sw,
+    #fpsb.on .sw,
+    #bfb.on .sw {
+      background: var(--acc)
+    }
+
+    #upz.on .sw::after,
+    #fpsb.on .sw::after,
+    #bfb.on .sw::after {
+      transform: translateX(14px);
+      background: #fff
+    }
+
+    #langseg,
+    #stepseg,
+    #floorseg,
+    #gridseg {
+      display: flex;
+      gap: 3px;
+      padding: 2px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      border-radius: 8px
+    }
+
+    #langseg button,
+    #stepseg button,
+    #floorseg button,
+    #gridseg button {
+      padding: 3px 10px;
+      font-size: .74rem;
+      background: none;
+      color: #9a9a9a;
+      border-radius: 6px
+    }
+
+    #langseg button.on,
+    #stepseg button.on,
+    #floorseg button.on,
+    #gridseg button.on {
+      background: var(--acc);
+      color: #fff
+    }
+
+    #xp #steprow:not([hidden]) {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 5px
+    }
+
+    #stepseg button {
+      flex: 1;
+      padding: 3px 4px
+    }
+
+    #xp .xs {
+      display: flex;
+      flex-direction: column;
+      gap: 5px
+    }
+
+    #xp .xs input[type=range] {
+      width: 100%;
+      margin: 0;
+      accent-color: var(--acc)
+    }
+
+    #xp .xs .xr span:last-child {
+      opacity: .7;
+      font-variant-numeric: tabular-nums
+    }
+
+    #xp input[type=color] {
+      width: 44px;
+      height: 26px;
+      padding: 0;
+      border: 0;
+      background: none;
+      cursor: pointer
+    }
+
+    #xp .xr[hidden] {
+      display: none
+    }
+
+    #lightb:hover,
+    #gearb:hover,
+    .gr button:hover {
+      color: #d0d0d0
+    }
+
+    #lightb.on,
+    #gearb.on,
+    #rp button.on:hover {
+      color: #fff
+    }
+
+    #lt {
+      position: absolute;
+      top: 54px;
+      right: 140px;
+      width: 216px;
+      box-sizing: border-box;
+      background: #1c1c1cf5;
+      border: 1px solid rgba(255, 255, 255, .16);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      font-size: .78rem
+    }
+
+    #pl {
+      position: relative;
+      width: 230px;
+      max-height: 52vh;
+      box-sizing: border-box;
+      background: #1c1c1cf5;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 10px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      display: flex;
+      flex-direction: column;
+      z-index: 4;
+      font-size: .8rem
+    }
+
+    #pl[hidden] {
+      display: none
+    }
+
+    #parts {
+      width: 34px;
+      height: 34px;
+      flex: none;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #3a3a3acc;
+      color: #cfcfcf;
+      border-radius: 4px
+    }
+
+    #parts:hover {
+      background: #4a4a4acc;
+      color: #fff
+    }
+
+    #parts.on {
+      background: var(--acc);
+      color: #fff
+    }
+
+    #parts svg {
+      width: 18px;
+      height: 18px;
+      display: block
+    }
+
+    /* wireframe wraps the four shading modes: the frame turns orange (dashed) while it is on */
+    #shw {
+      display: flex;
+      align-items: center;
+      border: 1px solid rgba(255, 255, 255, .22);
+      border-radius: 7px;
+      padding: 3px;
+      transition: border-color .15s, box-shadow .15s
+    }
+
+    #rp #shw .gr {
+      border: 0;
+      padding: 0
+    }
+
+    #shw .wv {
+      width: 1px;
+      height: 22px;
+      background: rgba(255, 255, 255, .18);
+      margin: 0 6px 0 3px
+    }
+
+    #shw.won {
+      border-style: dashed;
+      border-color: var(--acc)
+    }
+
+    /* corner flap = its own small button: the main button is cut around it (mask), the flap is dark orange, light orange on hover */
+    .hc {
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Crect width='34' height='34' fill='white'/%3E%3Cpath d='M34 22.2Q34 18 31.03 20.97L20.97 31.03Q18 34 22.2 34L30 34A4 4 0 0 0 34 30Z' fill='black' stroke='black' stroke-width='2.4' stroke-linejoin='round'/%3E%3Cpath d='M34 22.2Q34 18 31.03 20.97L20.97 31.03Q18 34 22.2 34L30 34A4 4 0 0 0 34 30Z' fill='white'/%3E%3C/svg%3E") 0 0 / 34px 34px no-repeat;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Crect width='34' height='34' fill='white'/%3E%3Cpath d='M34 22.2Q34 18 31.03 20.97L20.97 31.03Q18 34 22.2 34L30 34A4 4 0 0 0 34 30Z' fill='black' stroke='black' stroke-width='2.4' stroke-linejoin='round'/%3E%3Cpath d='M34 22.2Q34 18 31.03 20.97L20.97 31.03Q18 34 22.2 34L30 34A4 4 0 0 0 34 30Z' fill='white'/%3E%3C/svg%3E") 0 0 / 34px 34px no-repeat;
+      -webkit-mask-mode: luminance;
+      mask-mode: luminance
+    }
+
+    .cz {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 34px;
+      height: 34px;
+      background: #a65522;
+      clip-path: path("M34 22.2Q34 18 31.03 20.97L20.97 31.03Q18 34 22.2 34L30 34A4 4 0 0 0 34 30Z");
+      cursor: pointer;
+      transition: background .12s
+    }
+
+    .cz:hover {
+      background: #f7b27c
+    }
+
+    /* hover: every button lights up the same way */
+    #rp button:not(.on):not(:disabled):not(:has(.cz:hover)):hover {
+      color: #d0d0d0
+    }
+
+    #rp #holo:not(:has(.cz:hover)):hover {
+      color: #8fd8ff
+    }
+
+    #rp button.pop {
+      box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .55)
+    }
+
+    /* Hologram button: always hologram blue; when active the frame turns blue (no orange fill) */
+    #rp #holo {
+      color: #3fb8ff
+    }
+
+    #rp #holo svg {
+      width: 22px;
+      height: 22px;
+      stroke-width: 1.6
+    }
+
+    #rp #holo.on::before {
+      display: none
+    }
+
+    #rp #holo.on {
+      box-shadow: inset 0 0 0 1.5px #3fb8ff
+    }
+
+    #hop {
+      width: 190px
+    }
+
+    #hop .pt {
+      font-weight: 600;
+      opacity: .85
+    }
+
+    #hop .hr {
+      display: flex;
+      justify-content: space-between;
+      opacity: .8
+    }
+
+    #hop .hr span:last-child {
+      font-variant-numeric: tabular-nums
+    }
+
+    #hop #holoL {
+      width: 100%;
+      margin: 0;
+      accent-color: var(--acc)
+    }
+
+    #sop,
+    #cop,
+    #fop,
+    #hop {
+      position: absolute;
+      left: 0;
+      width: 200px;
+      box-sizing: border-box;
+      background: #1c1c1cf5;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 10px;
+      padding: 8px 12px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: .8rem;
+      z-index: 5
+    }
+
+    #sop[hidden],
+    #cop[hidden],
+    #fop[hidden],
+    #hop[hidden],
+    #sop .xr[hidden] {
+      display: none
+    }
+
+    #cop {
+      width: 190px
+    }
+
+    #fop {
+      width: 210px
+    }
+
+    #cop .pt,
+    #fop .pt {
+      font-weight: 600;
+      opacity: .85
+    }
+
+    #cop .xs,
+    #fop .xs {
+      display: flex;
+      flex-direction: column;
+      gap: 5px
+    }
+
+    #cop input[type=range],
+    #fop input[type=range] {
+      width: 100%;
+      margin: 0;
+      accent-color: var(--acc)
+    }
+
+    #cop .xs .xr span:last-child,
+    #fop .xs .xr span:last-child {
+      opacity: .7;
+      font-variant-numeric: tabular-nums
+    }
+
+    #cop.ortho .xs {
+      opacity: .4;
+      pointer-events: none
+    }
+
+    #fop.off .fb {
+      opacity: .4;
+      pointer-events: none
+    }
+
+    #fop input[type=color] {
+      width: 44px;
+      height: 26px;
+      padding: 0;
+      border: 0;
+      background: none;
+      cursor: pointer
+    }
+
+    #fop .xr[hidden] {
+      display: none
+    }
+
+    #fop #gmrow {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 5px
+    }
+
+    #gridseg button {
+      flex: 1
+    }
+
+    #cop .xr,
+    #fop .xr,
+    #sop .xr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px
+    }
+
+    #holoL {
+      width: 100%;
+      margin: 0;
+      accent-color: var(--acc)
+    }
+
+    #sop input[type=color] {
+      width: 44px;
+      height: 26px;
+      padding: 0;
+      border: 0;
+      background: none;
+      cursor: pointer
+    }
+
+    #plh {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px 6px;
+      font-weight: 600;
+      gap: 8px
+    }
+
+    #plt {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    #plb {
+      overflow-y: auto;
+      padding: 0 4px 6px
+    }
+
+    .pi {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: none
+    }
+
+    .pi:hover {
+      background: #ffffff14
+    }
+
+    .pi i {
+      flex: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      box-sizing: border-box;
+      border: 2px solid transparent
+    }
+
+    .pi span {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .pi small {
+      flex: none;
+      opacity: .5;
+      font-size: .7rem;
+      font-variant-numeric: tabular-nums
+    }
+
+    .pi.sel {
+      background: #ffffff1f;
+      box-shadow: inset 2px 0 0 var(--acc)
+    }
+
+    .pi .pe {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      margin: -2px -2px -2px 0;
+      background: none;
+      border-radius: 5px;
+      color: #b5b5b5;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .pi .pe:hover {
+      background: #ffffff1f;
+      color: #fff
+    }
+
+    .pe svg {
+      width: 15px;
+      height: 15px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round
+    }
+
+    .pe .sl {
+      display: none
+    }
+
+    .pi.off .pe .sl {
+      display: block
+    }
+
+    .pi.off .pe {
+      color: #777
+    }
+
+    #plf {
+      padding: 6px 10px 8px;
+      border-top: 1px solid rgba(255, 255, 255, .1);
+      font-size: .68rem;
+      opacity: .55;
+      line-height: 1.5
+    }
+
+    #plf b {
+      font-weight: 600;
+      opacity: 1
+    }
+
+    .pi.off span,
+    .pi.off small {
+      opacity: .35;
+      text-decoration: line-through
+    }
+
+    .pi.off i {
+      background: transparent !important;
+      border-color: currentColor;
+      opacity: .5
+    }
+
+    #lt[hidden] {
+      display: none
+    }
+
+    #lt .rw {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      row-gap: 3px
+    }
+
+    #lt .rw span {
+      opacity: .7;
+      font-variant-numeric: tabular-nums
+    }
+
+    #lt .rw input[type=range] {
+      grid-column: 1/3;
+      width: 100%;
+      margin: 0;
+      accent-color: var(--acc)
+    }
+
+    #lt .rc {
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    #lt #lk {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      accent-color: initial
+    }
+
+    #lt #lk::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid #222;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, .5)
+    }
+
+    #lt .kl {
+      display: flex;
+      justify-content: space-between;
+      font-size: .66rem;
+      opacity: .55;
+      margin-top: -5px
+    }
+
+    #lt .rk {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      user-select: none
+    }
+
+    #lt .rk input {
+      accent-color: var(--acc);
+      margin: 0
+    }
+
+    #lt button {
+      padding: 6px 10px;
+      font-size: .78rem
+    }
+  </style>
+</head>
+
+<body>
+  <script>
+    // opened with a file (double-click): the "drag & drop" hint never shows, and the window title shows the file name right away
+    (() => {const q = new URLSearchParams(location.search); if (q.get('file')) {document.documentElement.classList.add('opening'); if (q.get('name')) document.title = q.get('name')} })();
+  </script>
+  <canvas id="c"></canvas>
+  <div id="drop" data-i18n-html="drop">Drag &amp; Drop<br><small style="opacity:.7">FBX · GLB/GLTF · OBJ · STL · PLY ·
+      DAE · 3DS · 3MF · AMF · STEP</small></div>
+  <div id="lp">
+    <div id="lrow">
+      <label id="fb" data-i18n-title="openTip" title="Open model (or drag &amp; drop a file onto the window)"><svg
+          viewBox="0 0 24 24">
+          <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        </svg><input id="f" type="file" multiple
+          accept=".fbx,.glb,.gltf,.obj,.mtl,.stl,.ply,.dae,.3ds,.3mf,.amf,.step,.stp,.bin,.png,.jpg,.jpeg,.webp,.bmp,.tga"
+          hidden></label>
+      <button id="parts" data-i18n-title="partsTip" title="Part list"><svg viewBox="0 0 24 24">
+          <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" fill="currentColor" fill-opacity=".95"
+            stroke="none" />
+          <rect x="13" y="3.5" width="7.5" height="7.5" rx="1.5" fill="currentColor" fill-opacity=".5" stroke="none" />
+          <rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5" fill="currentColor" fill-opacity=".5" stroke="none" />
+          <rect x="13" y="13" width="7.5" height="7.5" rx="1.5" fill="currentColor" fill-opacity=".95" stroke="none" />
+        </svg></button>
+      <div id="info"></div>
+    </div>
+    <div id="aw" hidden>
+      <button id="ab" data-i18n-title="animTip" title="Choose animation"><span id="abl"></span><svg viewBox="0 0 12 12">
+          <path d="M2 4l4 4 4-4" />
+        </svg></button>
+      <div id="al" hidden></div>
+    </div>
+    <div id="pl" hidden>
+      <div id="plh"><span id="plt"></span></div>
+      <div id="plb"></div>
+      <div id="plf" data-i18n-html="plKeys"><b>H</b> hide · <b>Shift+H</b> isolate · <b>Alt+H</b> show all</div>
+    </div>
+  </div>
+  <canvas id="gizmo"></canvas>
+  <button id="gearb" data-i18n-title="settingsTip" title="Settings"><svg viewBox="0 0 24 24">
+      <path
+        d="M9.56 5.23 L10.76 2.48 L13.24 2.48 L14.44 5.23 L15.07 5.49 L17.85 4.39 L19.61 6.15 L18.51 8.93 L18.77 9.56 L21.52 10.76 L21.52 13.24 L18.77 14.44 L18.51 15.07 L19.61 17.85 L17.85 19.61 L15.07 18.51 L14.44 18.77 L13.24 21.52 L10.76 21.52 L9.56 18.77 L8.93 18.51 L6.15 19.61 L4.39 17.85 L5.49 15.07 L5.23 14.44 L2.48 13.24 L2.48 10.76 L5.23 9.56 L5.49 8.93 L4.39 6.15 L6.15 4.39 L8.93 5.49z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg></button>
+  <div id="fps">-- FPS</div>
+  <div id="rp">
+    <div class="gr" id="vw">
+      <button id="skel" data-i18n-title="skelTip" title="Show bones"><svg viewBox="0 0 24 24">
+          <circle cx="12" cy="4.6" r="2.2" />
+          <path d="M12 6.8V13M12 8.6L5.5 12M12 8.6l6.5 3.4M12 13l-4 8M12 13l4 8" />
+          <g fill="currentColor" stroke="none">
+            <circle cx="12" cy="13" r="1.3" />
+            <circle cx="5.5" cy="12" r="1.2" />
+            <circle cx="18.5" cy="12" r="1.2" />
+            <circle cx="8" cy="21" r="1.2" />
+            <circle cx="16" cy="21" r="1.2" />
+          </g>
+        </svg></button>
+      <button id="lightb" data-i18n-title="lightTip" title="Light settings"><svg viewBox="0 0 24 24">
+          <path d="M9 18h6M10 21h4" />
+          <path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z" />
+        </svg></button>
+      <button id="ortho" title="Orthographic / Isometric" class="hc"><svg class="ip" viewBox="0 0 24 24">
+          <path d="M5 10v4M19 4v16M5 10L19 4M5 14l14 6" />
+          <path d="M2.5 12H5" />
+        </svg><svg class="io" viewBox="0 0 24 24">
+          <path d="M5 6v12M19 6v12M5 6h14M5 18h14" />
+          <path d="M2.5 12H5" />
+        </svg><span class="cz" data-i18n-title="camSetTip" title=""></span></button>
+      <button id="grid" class="hc on" data-i18n-title="gridTip" title="Floor"><svg viewBox="0 0 24 24">
+          <rect x="4" y="4" width="16" height="16" rx="2" />
+          <path d="M9.33 4v16M14.67 4v16M4 9.33h16M4 14.67h16" />
+        </svg><span class="cz" data-i18n-title="floorSetTip" title=""></span></button>
+    </div>
+    <div id="shw">
+      <button id="wire" data-i18n-title="wireTip" title="Wireframe"><svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" />
+          <ellipse cx="12" cy="12" rx="4" ry="9" />
+          <ellipse cx="12" cy="12" rx="9" ry="3.2" />
+          <path d="M12 3v18" />
+        </svg></button>
+      <i class="wv"></i>
+      <div class="gr" id="sh">
+        <button id="mat" class="on" data-i18n-title="matTip" title="Material"><svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" />
+            <path stroke="none" fill="currentColor" fill-opacity=".35" d="M21 12a9 9 0 0 1-9 9c3-2 8-6 9-9z" />
+            <path d="M7 10a5.5 5.5 0 0 1 4-4.2" stroke-width="2" />
+          </svg></button>
+        <button id="rndb" data-i18n-title="rndTip" title="Random"><svg viewBox="0 0 24 24">
+            <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
+            <g stroke="none" fill="currentColor">
+              <circle cx="8.5" cy="8.5" r="1.4" />
+              <circle cx="15.5" cy="8.5" r="1.4" />
+              <circle cx="12" cy="12" r="1.4" />
+              <circle cx="8.5" cy="15.5" r="1.4" />
+              <circle cx="15.5" cy="15.5" r="1.4" />
+            </g>
+          </svg></button>
+        <button id="solid" data-i18n-title="solidTip" title="Solid" class="hc"><svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" fill="currentColor" stroke="none" />
+            <path d="M12 3a9 9 0 0 1 0 18z" fill="#000" fill-opacity=".2" stroke="none" />
+          </svg><span class="cz" data-i18n-title="solSetTip" title=""></span></button>
+        <button id="holo" data-i18n-title="holoTip" title="Hologram" class="hc"><svg viewBox="0 0 24 24">
+            <path d="M12 2.5L20 7v10l-8 4.5L4 17V7z" />
+            <path d="M12 2.5L20 7l-8 4.5L4 7z" fill="currentColor" fill-opacity=".5" />
+            <path d="M4 7l8 4.5v10L4 17z" fill="currentColor" fill-opacity=".28" />
+            <path d="M20 7l-8 4.5v10l8-4.5z" fill="currentColor" fill-opacity=".12" />
+          </svg><span class="cz" data-i18n-title="holoSetTip" title=""></span></button>
+      </div>
+    </div>
+    <div id="sop" hidden>
+      <div class="xr" id="solrow"><span data-i18n="solCol">Solid color</span><input id="solcol" type="color"
+          value="#f3f3f3"></div>
+    </div>
+    <div id="cop" hidden>
+      <div class="pt" data-i18n="camT">Camera</div>
+      <div class="xs">
+        <div class="xr"><span data-i18n="fovL">Field of view</span><span id="v_fov"></span></div>
+        <input id="fov" type="range" min="20" max="90" step="1" value="40">
+      </div>
+    </div>
+    <div id="hop" hidden>
+      <div class="pt" data-i18n="holo">Hologram</div>
+      <div class="hr"><span data-i18n="holoL">Line brightness</span><span id="v_holoL"></span></div><input id="holoL"
+        type="range" min="10" max="100" step="5">
+    </div>
+    <div id="fop" hidden>
+      <div class="pt" data-i18n="floorT">Floor</div>
+      <div class="fb">
+        <div class="xr"><span data-i18n="floor">Floor</span>
+          <div id="floorseg"><button data-m="grid" data-i18n="fgrid">Grid</button><button data-m="solid"
+              data-i18n="fsolid">Solid</button></div>
+        </div>
+        <div class="xs" style="margin-top:8px">
+          <div class="xr"><span data-i18n="fsize">Floor size</span><span id="v_fs"></span></div><input id="fsize"
+            type="range" min="1" max="5" step="1">
+        </div>
+        <div class="xr" id="frow" style="margin-top:8px"><span data-i18n="fcol">Floor color</span><input id="fcol"
+            type="color"></div>
+        <div class="xr" id="gmrow" style="margin-top:8px"><span data-i18n="gmode">Grid lines</span>
+          <div id="gridseg"><button data-g="std" data-i18n="gstd">Standard</button><button data-g="inv" data-i18n="ginv"
+              data-i18n-title="ginvTip">Smart inverse</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="lock" hidden></div>
+  <div id="ld" hidden>
+    <div id="ldh"><i id="lds"></i>
+      <div id="ldt"></div>
+    </div>
+    <div id="ldb"><i id="ldi"></i></div>
+    <div id="ldn"><span id="ldname"></span><span id="ldpct"></span></div>
+  </div>
+  <div id="err" hidden>
+    <b id="errt"></b>
+    <div id="errm"></div>
+    <div id="errx"></div>
+    <div id="errb"><button id="errlog"></button><button id="errok"></button></div>
+  </div>
+  <div id="xp" hidden>
+    <button id="upz" class="xr" data-i18n-title="zupTip" title="Treat Z as up"><span data-i18n="zup">Z up</span><i
+        class="sw"></i></button>
+    <button id="bfb" class="xr" data-i18n-title="bfTip"
+      title="Draw the back side of faces too (fixes missing / see-through surfaces)"><span data-i18n="bfl">Back
+        faces</span><i class="sw"></i></button>
+    <button id="fpsb" class="xr on" data-i18n-title="fpsTip" title="Show the FPS counter"><span data-i18n="fpsl">FPS
+        counter</span><i class="sw"></i></button>
+    <div class="xr" id="steprow" hidden><span data-i18n="stepDet" data-i18n-title="stepTip"
+        title="CAD surfaces are turned into triangles; more detail = smoother curves but more triangles">CAD
+        detail</span>
+      <div id="stepseg"><button data-m="low" data-i18n="dLow">Low</button><button data-m="mid"
+          data-i18n="dMid">Medium</button><button data-m="high" data-i18n="dHigh">High</button></div>
+    </div>
+    <div class="xr"><span data-i18n="lang">Language</span>
+      <div id="langseg"><button data-l="tr">TR</button><button data-l="en">EN</button></div>
+    </div>
+  </div>
+  <div id="lt" hidden>
+    <div class="rw"><label for="br" data-i18n="bright">Brightness</label><span id="v_br"></span><input id="br"
+        type="range" min="0" max="2" step="0.05"></div>
+    <div class="rw"><label for="fill" data-i18n="fill">Fill light</label><span id="v_fill"></span><input id="fill"
+        type="range" min="0" max="2" step="0.05"></div>
+    <div class="rw"><label for="az" data-i18n="dirH">Direction (horizontal)</label><span id="v_az"></span><input id="az"
+        type="range" min="0" max="360" step="1"></div>
+    <div class="rw"><label for="el" data-i18n="elev">Elevation</label><span id="v_el"></span><input id="el" type="range"
+        min="-90" max="90" step="1"></div>
+    <div class="rw"><label for="lk" data-i18n="ltemp">Light temperature</label><span id="v_lk"></span><input id="lk"
+        type="range" min="2000" max="10000" step="100"></div>
+    <div class="kl"><span>2000K</span><span>10000K</span></div>
+    <label class="rk" data-i18n-title="followTip" title="The model is lit from the same side at any angle"><input
+        id="lf" type="checkbox"><span data-i18n="follow">Follow camera</span></label>
+    <label class="rk"><input id="lsh" type="checkbox"><span data-i18n="shadow">Shadows</span></label>
+    <button id="lr" data-i18n="reset">Reset</button>
+  </div>
+  <div id="dock" hidden>
+    <div id="tl">
+      <input id="t" type="range" min="0" max="1" step="0.001" value="0">
+      <div id="tr">
+        <span class="l" id="tl_l"></span>
+        <div id="tc">
+          <div id="spw">
+            <button id="spd" data-i18n-title="speed" title="Playback speed"><span id="spl">1x</span><svg
+                viewBox="0 0 12 12">
+                <path d="M2 8l4-4 4 4" />
+              </svg></button>
+            <div id="sp" hidden>
+              <div class="sph"><span data-i18n="speed">Playback speed</span><b id="spv">1x</b></div>
+              <div id="spb"></div>
+              <input id="sps" type="range" min="0.1" max="3" step="0.05" value="1">
+              <div class="spr"><span>0.1x</span><span>3x</span></div>
+            </div>
+          </div>
+          <div id="tg">
+            <button id="prev" data-i18n-title="prev" title="Previous frame"></button>
+            <button id="play" class="p" data-i18n-title="playT" title="Play / Pause"></button>
+            <button id="next" data-i18n-title="next" title="Next frame"></button>
+          </div>
+          <button id="loopb"></button>
+        </div>
+        <span class="r" id="tl_r"></span>
+      </div>
+    </div>
+  </div>
+  <script src="three.min.js"></script>
+  <script src="fflate.min.js"></script>
+  <script src="FBXLoader.js"></script>
+  <script src="GLTFLoader.js"></script>
+  <script src="DRACOLoader.js"></script>
+  <script src="meshopt_decoder.js"></script>
+  <script src="OBJLoader.js"></script>
+  <script src="MTLLoader.js"></script>
+  <script src="STLLoader.js"></script>
+  <script src="PLYLoader.js"></script>
+  <script src="ColladaLoader.js"></script>
+  <script src="TDSLoader.js"></script>
+  <script src="3MFLoader.js"></script>
+  <script src="AMFLoader.js"></script>
+  <script src="TGALoader.js"></script>
+  <script src="OrbitControls.js"></script>
+  <script>
+    const cv = document.getElementById('c');
+    const r = new THREE.WebGLRenderer({canvas: cv, antialias: true});
+    r.setPixelRatio(devicePixelRatio);
+    r.outputEncoding = THREE.sRGBEncoding; // gamma-correct output for every format (linear output made FBX/OBJ look dark and harsh)
+    const MAX_ANISO = r.capabilities.getMaxAnisotropy();
+    const lin = hex => new THREE.Color(hex).convertSRGBToLinear(); // color as it should look on screen -> linear value (output is sRGB encoded)
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x2b2b2b);
+    // Start view (always the same, not remembered): from the right and a bit above
+    const START_AZ = 35, START_EL = 22, START_DIST = 3; // degrees to the right of straight-on | degrees above the horizon | distance in model sizes
+    const startDir = (d = 1) => {const az = START_AZ * Math.PI / 180, el = START_EL * Math.PI / 180; return new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(d)};
+    const pCam = new THREE.PerspectiveCamera(40, 1, 0.01, 1000); pCam.position.copy(startDir(3.2)).add(new THREE.Vector3(0, 1, 0)); // the empty scene (app start) looks from the same side
+    const oCam = new THREE.OrthographicCamera(-1, 1, 1, -1, -1000, 1000);
+    let cam = pCam, ortho = false, oH = 1, sceneK = 1; // cam = active camera
+    const ctl = new THREE.OrbitControls(cam, cv); ctl.target.set(0, 1, 0);
+    // Base light levels at Brightness 100% / Fill 100% (tune here: a bigger number = a brighter scene)
+    const HEMI_K = 0.8; // fill (sky/ground) light
+    const DIR_K = 1.2;  // main directional light
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x909090, HEMI_K); scene.add(hemi); // ground color 0x90.. lifts the undersides
+    const dl = new THREE.DirectionalLight(0xffffff, DIR_K); scene.add(dl);
+    // Blender-style grid: 3 levels (cells 10x apart); each fades by on-screen density
+    const gr = new THREE.Group(), GK = [-1, 0, 1]; scene.add(gr);
+    // Floor-size fade: the lines stay full inside the x1 floor area and get fainter towards the outer edge of a bigger floor.
+    const GF_EDGE = 0.1; // <- line opacity at the very edge of the floor (0 = invisible, 1 = no fade)
+    const GF_CURVE = 1;  // <- 1 = even fade, >1 = stays strong longer then drops, <1 = drops quickly then lingers
+    const GMAX = 5; // built once at this size when the floor first grows; the slider then only moves a clip boundary
+    const gUni = {uR: {value: new THREE.Vector4(1, 2, GF_EDGE, GF_CURVE)}, uB: {value: 1}, uMinor: {value: new THREE.Color()}, uMajor: {value: new THREE.Color()}}; // inner radius, outer radius, edge opacity, curve | line colours (linear)
+    // Like THREE.GridHelper, but every line is cut into short segments (long lines crossing the camera plane can drop out)
+    function mkGrid(size, div) {
+      const half = size / 2, step = size / div, SEG = 4, ns = Math.max(1, Math.ceil(size / SEG)), sl = size / ns;
+      const pos = [], col = [];
+      for (let i = 0; i <= div; i++) {
+        const k = -half + i * step, c = i === div / 2 ? 1 : 0; // 1 = main (centre) line, 0 = normal line: colours come from gUni
+        for (let j = 0; j < ns; j++) {
+          const a = -half + j * sl, b = a + sl;
+          pos.push(a, 0, k, b, 0, k, k, 0, a, k, 0, b);
+          for (let q = 0; q < 4; q++)col.push(c, c, c);
+        }
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      return new THREE.LineSegments(g, new THREE.LineBasicMaterial({vertexColors: true, toneMapped: false}));
+    }
+    function buildGrid(n) {
+      gr.children.slice().forEach(c => {gr.remove(c); c.geometry.dispose(); c.material.dispose()});
+      GK.forEach(k => {
+        const g = mkGrid(10 * n, Math.max(2, Math.round(20 * n / Math.pow(10, k))));
+        g.material.transparent = true; g.material.depthWrite = false;
+        g.material.onBeforeCompile = sh => {
+          sh.uniforms.uR = gUni.uR; sh.uniforms.uB = gUni.uB; sh.uniforms.uMinor = gUni.uMinor; sh.uniforms.uMajor = gUni.uMajor;
+          sh.vertexShader = sh.vertexShader.replace('void main() {', 'varying vec2 vGP;\nvoid main() {').replace('#include <project_vertex>', '#include <project_vertex>\n  vGP=(modelMatrix*vec4(transformed,1.0)).xz;');
+          sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'uniform vec4 uR;uniform float uB;uniform vec3 uMinor,uMajor;varying vec2 vGP;\nvoid main() {\n  if(abs(vGP.x)>uB||abs(vGP.y)>uB)discard;').replace('#include <color_fragment>', 'diffuseColor.rgb = mix(uMinor, uMajor, vColor.r);').replace('gl_FragColor = vec4( outgoingLight, diffuseColor.a );', 'float gt=uR.y>uR.x?clamp((length(vGP)-uR.x)/(uR.y-uR.x),0.0,1.0):0.0;gt=pow(gt,uR.w);gl_FragColor = vec4( outgoingLight, diffuseColor.a*mix(1.0,uR.z,gt) );');
+        };
+        g.userData.s = 0.5 * Math.pow(10, k); g.userData.w = k < 0 ? 0.7 : 1;
+        gr.add(g);
+      });
+    }
+    const DIM = 0.4; // 0..1: each visible level makes the finer ones this much dimmer (0.4 -> 60% per 10x step)
+    function gridFade() {
+      if (!gr.visible) return;
+      const dw = ortho ? oH / oCam.zoom / (2 * Math.tan(pCam.fov * Math.PI / 360)) : pCam.position.distanceTo(ctl.target), d = dw / gr.scale.x;
+      const f = gr.children.map(g => {const t = Math.min(1, Math.max(0, (d / g.userData.s - 40) / 80)); return 1 - t * t * (3 - 2 * t)});
+      // every level is dimmer than the next coarser one, so each 10x step stays distinguishable
+      let m = 1; // coarse -> fine: each visible level dims everything finer than it
+      for (let i = gr.children.length - 1; i >= 0; i--) {
+        const g = gr.children[i], a = f[i] * m; m *= 1 - DIM * f[i];
+        g.material.opacity = a; g.visible = a > 0.01;
+      }
+    }
+    let model = null, mixer = null, actions = [], cur = null, playing = true, wire = false, solid = false, speed = 1, loopMode = 'repeat', skel = false, skelObjs = [], skelPts = null, skelBones = [], animNames = [], animSrc = [], curIdx = 0, infoFn = null;
+    const $ = id => document.getElementById(id);
+    function orthoFrustum() {const a = innerWidth / innerHeight; oCam.left = -oH * a / 2; oCam.right = oH * a / 2; oCam.top = oH / 2; oCam.bottom = -oH / 2; oCam.updateProjectionMatrix()}
+    function resize() {r.setSize(innerWidth, innerHeight, false); pCam.aspect = innerWidth / innerHeight; pCam.updateProjectionMatrix(); orthoFrustum()}
+    // Perspective <-> orthographic switch: the on-screen size stays the same
+    function setOrtho(on) {
+      if (on === ortho) return;
+      const half = Math.tan(pCam.fov * Math.PI / 360);
+      if (on) {
+        oH = 2 * pCam.position.distanceTo(ctl.target) * half;
+        oCam.position.copy(pCam.position); oCam.quaternion.copy(pCam.quaternion);
+        oCam.zoom = 1; oCam.near = -sceneK * 100; oCam.far = sceneK * 100; orthoFrustum();
+        cam = oCam;
+      } else {
+        const d = oH / oCam.zoom / (2 * half);
+        const dir = oCam.position.clone().sub(ctl.target).normalize();
+        pCam.position.copy(ctl.target).addScaledVector(dir, d); pCam.quaternion.copy(oCam.quaternion);
+        cam = pCam;
+      }
+      ortho = on; ctl.object = cam; ctl.update();
+      $('ortho').classList.toggle('on', ortho); updateOrthoTitle(); syncFov();
+    }
+    function syncFov() {$('cop').classList.toggle('ortho', ortho); $('fov').disabled = ortho} // not used in orthographic view: dimmed
+    addEventListener('resize', resize); resize();
+    // ---- Language (TR / EN) ----
+    const I18N = {
+      tr: {
+        drop: 'Sürükle &amp; Bırak<br><small style="opacity:.7">FBX · GLB/GLTF · OBJ · STL · PLY · DAE · 3DS · 3MF · AMF · STEP</small>',
+        openTip: 'Model aç (ya da dosyayı pencereye sürükle-bırak)', animTip: 'Animasyon seç', lightTip: 'Işık ayarları',
+        orthoTip: 'Ortografik / İzometrik',
+        gridTip: 'Zemin', skelTip: 'Kemikleri göster',
+        wireTip: 'Wireframe', solidTip: 'Solid', matTip: 'Materyal',
+        settingsTip: 'Ayarlar', zup: 'Z yukarı', fpsl: 'FPS sayacı', bfl: 'Arka yüzler', texLoad: 'Texture\'lar yükleniyor…', holoLoad: 'Hologram hazırlanıyor…', plKeys: '<b>H</b> gizle · <b>Shift+H</b> sadece bunu göster · <b>Alt+H</b> hepsini göster<br><b>F</b> / çift tık: odaklan · Ctrl+tık: çoklu seçim', holoL: 'Çizgi parlaklığı', holo: 'Hologram', holoTip: 'Hologram', holoSetTip: 'Hologram ayarları', rndTip: 'Rastgele', partsTip: 'Parça listesi', solSetTip: 'Solid ayarları', solCol: 'Solid rengi', partsT: 'Parçalar', bfTip: 'Yüzlerin arka tarafını da çiz (eksik / şeffaf görünen yüzeyleri düzeltir)', fpsTip: 'FPS sayacını göster', zupTip: 'Z eksenini yukarı al', lang: 'Dil',
+        bright: 'Parlaklık', fill: 'Dolgu ışığı', dirH: 'Yön (yatay)', elev: 'Yükseklik', ltemp: 'Işık sıcaklığı', shadow: 'Gölgeler', floor: 'Zemin', fgrid: 'Izgara', fsolid: 'Düz', fsize: 'Zemin boyutu', fcol: 'Zemin rengi', gmode: 'Izgara çizgileri', gstd: 'Standart', ginv: 'Akıllı ters', ginvTip: 'Zeminin tersi, sadece orta tonlar', camSetTip: 'Kamera ayarları', floorSetTip: 'Zemin ayarları', camT: 'Kamera', floorT: 'Zemin', fovL: 'Görüş açısı', follow: 'Kameraya bağlı',
+        followTip: 'Model hangi açıdan bakılırsa bakılsın aynı yönden aydınlanır', reset: 'Sıfırla',
+        speed: 'Oynatma hızı', prev: 'Önceki kare', playT: 'Oynat / Duraklat', next: 'Sonraki kare',
+        loopRepeat: 'Döngü: Tekrar', loopPing: 'Döngü: İleri-geri', loopOnce: 'Döngü: Bir kez', clickChange: ' (değiştirmek için tıkla)',
+        sec: ' sn', frame: 'Kare ', loading: 'Yükleniyor…', reading: 'Dosya okunuyor…', parsing: 'Model işleniyor…', preparing: 'Sahne hazırlanıyor…', error: 'Hata: ', unsupported: 'Desteklenmeyen biçim: ', pts: 'nokta', tris: 'üçgen', partWord: 'Parça', eyeTip: 'Göster / gizle', animWord: 'Animasyon',
+        stepDet: 'CAD detayı', stepTip: 'CAD yüzeyleri üçgenlere çevrilir; detay arttıkça eğriler yumuşar ama üçgen sayısı artar', dLow: 'Düşük', dMid: 'Orta', dHigh: 'Yüksek', meshing: 'CAD yüzeyleri üçgenlere çevriliyor…',
+        errT: 'Model açılamadı', errOk: 'Tamam', errLog: 'Günlüğü göster',
+        errBig: 'Bu model bellek sınırını aşıyor, bu yüzden açılamadı. Dosya bu uygulama için çok büyük olabilir.',
+        errEmpty: 'Dosya okundu ama içinde çizilebilir yüzey ya da nokta bulunamadı. Dosya boş, bozuk ya da çok büyük olabilir.',
+        errGen: 'Dosya açılırken bir hata oluştu.',
+        errCrash: (n, oom) => (n ? '"' + n + '" açılırken ' : 'Görüntüleyici ') + (oom ? 'bellek yetmedi ve görüntüleyici durdu. Dosya bu uygulama için çok büyük.' : 'görüntüleyici beklenmedik şekilde durdu.') + ' Uygulama yeniden başlatıldı; başka bir dosya açabilirsin.',
+        animCnt: n => n + ' animasyon', boneCnt: n => fmtN(n) + ' kemik'
+      },
+      en: {
+        drop: 'Drag &amp; Drop<br><small style="opacity:.7">FBX · GLB/GLTF · OBJ · STL · PLY · DAE · 3DS · 3MF · AMF · STEP</small>',
+        openTip: 'Open model (or drag & drop a file onto the window)', animTip: 'Choose animation', lightTip: 'Light settings',
+        orthoTip: 'Orthographic / Isometric',
+        gridTip: 'Floor', skelTip: 'Show bones',
+        wireTip: 'Wireframe', solidTip: 'Solid', matTip: 'Material',
+        settingsTip: 'Settings', zup: 'Z up', fpsl: 'FPS counter', bfl: 'Back faces', texLoad: 'Loading textures…', holoLoad: 'Preparing hologram…', plKeys: '<b>H</b> hide · <b>Shift+H</b> isolate · <b>Alt+H</b> show all<br><b>F</b> / double click: focus · Ctrl+click: multi-select', holoL: 'Line brightness', holo: 'Hologram', holoTip: 'Hologram', holoSetTip: 'Hologram settings', rndTip: 'Random', partsTip: 'Part list', solSetTip: 'Solid settings', solCol: 'Solid color', partsT: 'Parts', bfTip: 'Draw the back side of faces too (fixes missing / see-through surfaces)', fpsTip: 'Show the FPS counter', zupTip: 'Treat Z as up', lang: 'Language',
+        bright: 'Brightness', fill: 'Fill light', dirH: 'Direction (horizontal)', elev: 'Elevation', ltemp: 'Light temperature', shadow: 'Shadows', floor: 'Floor', fgrid: 'Grid', fsolid: 'Solid', fsize: 'Floor size', fcol: 'Floor color', gmode: 'Grid lines', gstd: 'Standard', ginv: 'Smart inverse', ginvTip: 'Inverse of the floor, mid tones only', camSetTip: 'Camera settings', floorSetTip: 'Floor settings', camT: 'Camera', floorT: 'Floor', fovL: 'Field of view', follow: 'Follow camera',
+        followTip: 'The model is lit from the same side at any angle', reset: 'Reset',
+        speed: 'Playback speed', prev: 'Previous frame', playT: 'Play / Pause', next: 'Next frame',
+        loopRepeat: 'Loop: Repeat', loopPing: 'Loop: Ping-pong', loopOnce: 'Loop: Once', clickChange: ' (click to change)',
+        sec: ' s', frame: 'Frame ', loading: 'Loading…', reading: 'Reading file…', parsing: 'Processing model…', preparing: 'Preparing scene…', error: 'Error: ', unsupported: 'Unsupported format: ', pts: 'points', tris: 'tris', partWord: 'Part', eyeTip: 'Show / hide', animWord: 'Animation',
+        stepDet: 'CAD detail', stepTip: 'CAD surfaces are turned into triangles; more detail = smoother curves but more triangles', dLow: 'Low', dMid: 'Medium', dHigh: 'High', meshing: 'Turning CAD surfaces into triangles…',
+        errT: 'Could not open the model', errOk: 'OK', errLog: 'Show log',
+        errBig: 'This model exceeds the memory limit, so it could not be opened. The file may be too large for this app.',
+        errEmpty: 'The file was read but it contains no drawable surfaces or points. It may be empty, damaged or too large.',
+        errGen: 'An error occurred while opening the file.',
+        errCrash: (n, oom) => (n ? 'While opening "' + n + '", ' : 'The viewer ') + (oom ? 'it ran out of memory and the viewer stopped. The file is too large for this app.' : 'the viewer stopped unexpectedly.') + ' The viewer was restarted; you can open another file.',
+        animCnt: n => n + (n === 1 ? ' animation' : ' animations'), boneCnt: n => fmtN(n) + (n === 1 ? ' bone' : ' bones')
+      }
+    };
+    let lang = (() => {try {const v = localStorage.getItem('pp3d.lang'); if (v === 'tr' || v === 'en') return v} catch (e) { } return (navigator.language || 'tr').toLowerCase().startsWith('tr') ? 'tr' : 'en'})();
+    const tx = k => (I18N[lang][k] !== undefined ? I18N[lang][k] : I18N.tr[k]);
+    function setInfo(f) {infoFn = f; const x = f(); $('info').textContent = x; $('info').title = x}
+    function updateOrthoTitle() {$('ortho').title = tx('orthoTip')}
+    function renderAnimList() {
+      animNames = animLabels(animSrc); $('al').innerHTML = '';
+      animSrc.forEach((a, i) => {const b = document.createElement('button'); b.innerHTML = '<span></span><small></small>'; b.firstChild.textContent = animNames[i]; b.lastChild.textContent = a.duration.toFixed(1) + 's'; b.classList.toggle('on', i === curIdx); b.onclick = () => {pick(i); $('al').hidden = true}; $('al').appendChild(b)});
+      $('abl').textContent = animNames[curIdx] || '';
+    }
+    function applyLang(save) {
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(e => {e.textContent = tx(e.dataset.i18n)});
+      document.querySelectorAll('[data-i18n-html]').forEach(e => {e.innerHTML = tx(e.dataset.i18nHtml)});
+      document.querySelectorAll('[data-i18n-title]').forEach(e => {e.title = tx(e.dataset.i18nTitle)});
+      updateOrthoTitle(); updateLoopBtn(); renderAnimList(); renderParts();
+      if (infoFn) setInfo(infoFn);
+      updateUI(); if (ldPhase && ldOn) renderLoad();
+      [].forEach.call($('langseg').children, b => b.classList.toggle('on', b.dataset.l === lang));
+      if (save) {try {localStorage.setItem('pp3d.lang', lang)} catch (e) { } }
+    }
+    // ---- Number format (1.560.233) and animation names ----
+    const fmtN = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, lang === 'tr' ? '.' : ','); // 1.560.233 (TR) / 1,560,233 (EN)
+    const GENERIC_ANIM = /^(mixamo\.com|take[ _]?\d+|default|animation|armature.*|animstack.*|unnamed.*)$/i;
+    function animLabels(anims) { // turn meaningless / duplicate names into "Animation N"
+      const cnt = {}; anims.forEach(a => {cnt[a.name] = (cnt[a.name] || 0) + 1});
+      return anims.map((a, i) => {const n = (a.name || '').trim(); return (!n || GENERIC_ANIM.test(n) || cnt[a.name] > 1) ? tx('animWord') + ' ' + (i + 1) : n});
+    }
+    // ---- Log + error card ----
+    // Every message goes to the host app (C#), which appends it to %LOCALAPPDATA%\PolyPeek3D\log.txt. Silent when not inside WebView2.
+    function plog(lv, msg) {try {window.chrome.webview.postMessage(lv + '|' + String(msg).slice(0, 2000))} catch (e) { } }
+    const errText = e => (e && e.message) ? e.message : String(e);
+    const errStack = e => (e && e.stack) ? ' | ' + String(e.stack).split('\n').slice(0, 3).join(' / ') : '';
+    const mbOf = n => (n / 1048576).toFixed(1) + ' MB';
+    function heapStr() {try {const m = performance.memory; return m ? 'JS heap ' + Math.round(m.usedJSHeapSize / 1048576) + ' / ' + Math.round(m.jsHeapSizeLimit / 1048576) + ' MB' : ''} catch (e) {return ''} }
+    addEventListener('error', e => plog('ERROR', 'JS: ' + e.message + ' @' + String(e.filename || '').split('/').pop() + ':' + e.lineno));
+    addEventListener('unhandledrejection', e => plog('ERROR', 'Promise: ' + errText(e.reason) + errStack(e.reason)));
+    // out-of-memory style failures come from the engine as RangeError / allocation messages
+    const friendlyErr = e => (e instanceof RangeError || /allocation|string length|array length|typed array length|out of memory|\bOOM\b|enlarge memory/i.test(errText(e))) ? tx('errBig') : tx('errGen');
+    function showErr(msg, detail) {
+      $('errt').textContent = tx('errT'); $('errm').textContent = msg; $('errx').textContent = detail || '';
+      $('errok').textContent = tx('errOk'); $('errlog').textContent = tx('errLog'); $('err').hidden = false;
+    }
+    $('errok').onclick = () => {$('err').hidden = true};
+    $('errlog').onclick = () => plog('CMD', 'OPENLOG');
+    // The host turns off the browser shortcuts (F5, Ctrl+P, Ctrl+F, Alt+Left...). The developer console stays available: F12 / Ctrl+Shift+I ask the host to open it.
+    document.addEventListener('keydown', e => {if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.code === 'KeyI')) {e.preventDefault(); plog('CMD', 'DEVTOOLS')} });
+    // ---- Loading bar ----
+    // Real percentage while reading; parsing and preparing block the main thread, so for those phases
+    // an indeterminate CSS spinner (runs on the compositor) is shown. Never shown for small files (no flicker).
+    const BIG = 1.5e6; // bytes: no bar for files smaller than this
+    let ldOn = false, ldPhase = null, ldPct = null, ldName = '', loadTok = 0;
+    // ---- Lock: while the card is shown nothing can be clicked, dragged, dropped or typed (no overlapping operations) ----
+    let locked = false;
+    function setLock(on) {
+      if (on === locked) return; locked = on;
+      $('lock').hidden = !on; ctl.enabled = !on; // also ends a camera drag that was going on when the card appeared
+      if (on) {const a = document.activeElement; if (a && a.blur) a.blur(); hoverP = null}
+    }
+    addEventListener('keydown', e => {if (locked && e.key !== 'F12') {e.preventDefault(); e.stopImmediatePropagation()} }, true); // before every other key handler
+    function renderLoad() {
+      setLock(true);
+      $('ld').hidden = false; $('ldt').textContent = tx(ldPhase); $('ldname').textContent = ldName;
+      $('ldpct').textContent = ldPct == null ? '' : Math.round(ldPct * 100) + '%';
+      $('ld').classList.toggle('ind', ldPct == null);
+      if (ldPct != null) $('ldi').style.width = (ldPct * 100) + '%';
+    }
+    function showLoad(phase, pct, name) {if (name !== undefined) ldName = name; ldPhase = phase; ldPct = pct; if (ldOn) renderLoad()}
+    let ldTimer = 0;
+    function hideLoad() {clearTimeout(ldTimer); ldOn = false; ldPhase = null; $('ld').hidden = true; setLock(false); document.documentElement.classList.remove('opening')}
+    // a small .gltf / .obj can pull in huge texture files (not counted in its own size): if loading takes longer than 250 ms, show the card anyway
+    function lateCard() {clearTimeout(ldTimer); ldTimer = setTimeout(() => {if (ldPhase && !ldOn) {ldOn = true; renderLoad()} }, 250)}
+    // wait until the bar is really painted (two frames); the timeout keeps it from hanging when the tab is in the background
+    const paint = () => new Promise(res => {let d = false; const f = () => {if (!d) {d = true; res()} }; requestAnimationFrame(() => requestAnimationFrame(f)); setTimeout(f, 150)});
+    async function fetchBuf(url, onp) { // fetch with progress reporting (when Content-Length is known)
+      const rs = await fetch(url); if (!rs.ok) throw new Error('HTTP ' + rs.status);
+      const total = +rs.headers.get('content-length') || 0;
+      if (!rs.body || !total) return await rs.arrayBuffer();
+      onp(0, total);
+      const out = new Uint8Array(total); let got = 0; const rd = rs.body.getReader();
+      for (; ;) {const x = await rd.read(); if (x.done) break; out.set(x.value, got); got += x.value.length; onp(got / total, total)}
+      return got === total ? out.buffer : out.slice(0, got).buffer;
+    }
+    // ---- Multi-format loading ----
+    const MODEL_EXT = ['fbx', 'glb', 'gltf', 'obj', 'stl', 'ply', 'dae', '3ds', '3mf', 'amf', 'step', 'stp'];
+    const ZUP_DEFAULT = ['stl', '3mf', 'amf', '3ds', 'step', 'stp']; // these formats usually come Z-up
+    const extOf = n => (n.split('.').pop() || '').toLowerCase();
+    let ctx = {base: null, files: new Map()}; // base: URL of the model's folder (when opened by double-click) | files: files dropped together (name -> blob URL)
+    let blobUrls = [], upZ = false, modelExt = '';
+    let ZM = {}; try {ZM = JSON.parse(localStorage.getItem('pp3d.zup') || '{}') || {}} catch (e) {ZM = {}} // Z-up choice remembered per file format
+    function mkManager() {
+      const m = new THREE.LoadingManager();
+      // resolve texture/bin/mtl paths: look up dropped files by name; for Windows paths (C:\...\a.png) take only the file name
+      m.setURLModifier(u => {
+        if (/^(blob:|data:)/i.test(u)) return u;
+        const clean = u.split('#')[0].split('?')[0];
+        let dec = clean; try {dec = decodeURIComponent(clean)} catch (e) { }
+        const name = dec.split(/[\\/]/).pop();
+        const f = ctx.files.get(name.toLowerCase());
+        if (f) return f;
+        if (ctx.base && dec.indexOf('\\') >= 0) return ctx.base + encodeURIComponent(name);
+        return u;
+      });
+      if (THREE.TGALoader) m.addHandler(/\.tga$/i, new THREE.TGALoader(m));
+      return m;
+    }
+    async function getRes(name) { // helper file (e.g. .mtl) -> ArrayBuffer | null
+      const key = name.split(/[\\/]/).pop();
+      try {
+        const u = ctx.files.get(key.toLowerCase());
+        if (u) return await (await fetch(u)).arrayBuffer();
+        if (ctx.base) {const rs = await fetch(ctx.base + encodeURIComponent(key)); if (rs.ok) return await rs.arrayBuffer()}
+      } catch (e) { }
+      return null;
+    }
+    // ---- STEP / STP (CAD) ----
+    // OpenCASCADE (occt-import-js, WebAssembly) runs in a Web Worker so the window stays responsive. A STEP file holds exact CAD surfaces,
+    // not triangles: "detail" is the tessellation tolerance (lower tolerance = more triangles = smoother curves).
+    const STEP_DETAIL = {
+      low: {linearDeflectionType: 'bounding_box_ratio', linearDeflection: 0.01, angularDeflection: 0.8},
+      mid: {linearDeflectionType: 'bounding_box_ratio', linearDeflection: 0.001, angularDeflection: 0.5},
+      high: {linearDeflectionType: 'bounding_box_ratio', linearDeflection: 0.0003, angularDeflection: 0.3}
+    };
+    let stepDetail = 'mid'; try {const v = localStorage.getItem('pp3d.stepDetail'); if (STEP_DETAIL[v]) stepDetail = v} catch (e) { }
+    let stepW = null, stepSeq = 0, stepFid = 0, stepBytes = 0;
+    let srcReread = null; // reads the opened file again (used when the STEP reader had to be restarted and lost its copy)
+    const stepPend = new Map();
+    function stepCall(msg) {
+      return new Promise((ok, no) => {
+        const id = ++stepSeq; stepPend.set(id, {ok, no});
+        try {
+          if (!stepW) {
+            stepW = new Worker('step-worker.js');
+            stepW.onmessage = ev => {const d = ev.data, p = stepPend.get(d.id); if (p) {stepPend.delete(d.id); d.error ? p.no(new Error(d.error)) : p.ok(d)} };
+            stepW.onerror = ev => {
+              const w = stepW; stepW = null; try {w.terminate()} catch (e) { }
+              const er = new Error('STEP reader failed: ' + (ev.message || 'worker error')); stepPend.forEach(p => p.no(er)); stepPend.clear();
+            };
+          }
+          stepW.postMessage(Object.assign({id}, msg));
+        } catch (e) {stepPend.delete(id); no(e)}
+      });
+    }
+    function stopStepWorker() {
+      if (!stepW) return;
+      try {stepW.terminate()} catch (e) { }
+      stepW = null; stepFid = 0;
+      const er = new Error('STEP reader stopped'); stepPend.forEach(p => p.no(er)); stepPend.clear();
+    }
+    const STEP_COL = 0xc8c8c8;
+    const stepRGB = c => new THREE.Color(c[0], c[1], c[2]).convertSRGBToLinear();
+    function stepMesh(m) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(m.position, 3));
+      if (m.normal) g.setAttribute('normal', new THREE.BufferAttribute(m.normal, 3));
+      g.setIndex(new THREE.BufferAttribute(m.index, 1));
+      const mats = new Map(), key = c => c ? c.map(x => x.toFixed(3)).join(',') : 'base';
+      const matFor = c => { // one material per distinct color (CAD colors can be set per face)
+        const k = key(c); let mt = mats.get(k);
+        if (!mt) {mt = new THREE.MeshStandardMaterial({color: c ? stepRGB(c) : (m.color ? stepRGB(m.color) : lin(STEP_COL)), roughness: 0.45, metalness: 0.15, side: THREE.DoubleSide}); mt.userData.colConv = true; mats.set(k, mt)} // colConv: the color is already linear (fixTextures must not convert it again)
+        return mt;
+      };
+      const runs = []; // consecutive faces with the same color become one draw group
+      m.faces.forEach(f => {
+        const mt = matFor(f.color), st = f.first * 3, n = (f.last - f.first + 1) * 3, last = runs[runs.length - 1];
+        if (last && last.mt === mt && last.st + last.n === st) last.n += n; else runs.push({mt, st, n});
+      });
+      const covered = runs.reduce((a, r) => a + r.n, 0);
+      let mat;
+      if (mats.size > 1 && covered === m.index.length) {
+        const arr = [...mats.values()]; mat = arr;
+        runs.forEach(r => g.addGroup(r.st, r.n, arr.indexOf(r.mt)));
+      } else mat = mats.size === 1 && covered === m.index.length ? [...mats.values()][0] : matFor(null);
+      const mesh = new THREE.Mesh(g, mat); mesh.name = m.name || '';
+      return mesh;
+    }
+    function buildStep(d) { // assembly tree -> groups; every mesh already sits in world position
+      const ms = d.meshes.map(stepMesh), grp = new THREE.Group(), used = new Set();
+      const walk = (n, parent) => {
+        const g = new THREE.Group(); g.name = n.name || ''; parent.add(g);
+        (n.meshes || []).forEach(i => {
+          if (!ms[i]) return;
+          const o = used.has(i) ? ms[i].clone() : ms[i]; used.add(i); // the same mesh used twice in the tree: clone (geometry is shared)
+          g.add(o);
+        });
+        (n.children || []).forEach(c => walk(c, g));
+      };
+      if (d.root) walk(d.root, grp);
+      ms.forEach((m, i) => {if (!used.has(i)) grp.add(m)});
+      return grp;
+    }
+    async function parseStep(buf) {
+      showLoad('meshing', null);
+      let d;
+      if (buf && buf.stepRemesh && !stepW) { // the reader crashed and was restarted: it no longer has the file, read it again
+        if (!srcReread) throw new Error('The STEP reader stopped. Open the file again.');
+        buf = await srcReread();
+      }
+      if (buf && buf.stepRemesh) d = await stepCall({cmd: 'mesh', fid: stepFid, params: STEP_DETAIL[stepDetail]}); // detail changed: the worker still holds the file
+      else {stepFid++; stepBytes = buf.byteLength; d = await stepCall({cmd: 'mesh', fid: stepFid, buffer: buf, params: STEP_DETAIL[stepDetail]})}
+      plog('INFO', 'STEP meshed, detail=' + stepDetail + ', ' + d.meshes.length + ' meshes');
+      return {obj: buildStep(d), anims: []};
+    }
+    async function parseModel(ext, buf) {
+      const mgr = mkManager(), base = ctx.base || '';
+      const txt = b => new TextDecoder('utf-8').decode(b);
+      switch (ext) {
+        case 'fbx': {const o = new THREE.FBXLoader(mgr).parse(buf, base); return {obj: o, anims: o.animations}}
+        case 'glb': case 'gltf': {
+          const l = new THREE.GLTFLoader(mgr), dr = new THREE.DRACOLoader();
+          dr.setDecoderPath(''); l.setDRACOLoader(dr);
+          if (window.MeshoptDecoder) l.setMeshoptDecoder(window.MeshoptDecoder);
+          const g = await new Promise((ok, no) => l.parse(buf, base, ok, no));
+          dr.dispose();
+          return {obj: g.scene || g.scenes[0], anims: g.animations || []};
+        }
+        case 'obj': {
+          const t = txt(buf), ol = new THREE.OBJLoader(mgr), m = t.match(/^\s*mtllib\s+(.+?)\s*$/m);
+          if (m) {const mb = await getRes(m[1]); if (mb) {const mc = new THREE.MTLLoader(mgr).parse(txt(mb), base); mc.preload(); ol.setMaterials(mc)} }
+          return {obj: ol.parse(t), anims: []};
+        }
+        case 'stl': {
+          const g = new THREE.STLLoader().parse(buf);
+          g.computeVertexNormals(); // many exporters write zero / wrong facet normals (the model turned black): use the real face normals
+          return {obj: new THREE.Mesh(g, new THREE.MeshStandardMaterial({color: 0xc8c8c8, roughness: 0.6, metalness: 0.1, vertexColors: !!g.hasColors})), anims: []};
+        }
+        case 'ply': {
+          const g = new THREE.PLYLoader().parse(buf), col = !!g.attributes.color;
+          if (!g.index) return {obj: new THREE.Points(g, new THREE.PointsMaterial({size: 2, sizeAttenuation: false, vertexColors: col, color: col ? 0xffffff : lin(0xdddddd)})), anims: []}; // no faces: treat it as a point cloud
+          return {obj: new THREE.Mesh(g, new THREE.MeshStandardMaterial({color: 0xc8c8c8, roughness: 0.7, metalness: 0, vertexColors: col, side: THREE.DoubleSide})), anims: []};
+        }
+        case 'dae': {const c = new THREE.ColladaLoader(mgr).parse(txt(buf), base); return {obj: c.scene, anims: c.animations || []}}
+        case '3ds': return {obj: new THREE.TDSLoader(mgr).parse(buf, base), anims: []};
+        case '3mf': { // the 3MF loader already converts the colors stored in the file to linear; only its default color (0xaaaaff) is still sRGB
+          const o = new THREE.ThreeMFLoader(mgr).parse(buf);
+          o.traverse(x => {if (x.isMesh) [].concat(x.material).forEach(m => {if (m && m.color && m.color.getHex() !== 0xaaaaff) m.userData.colConv = true})});
+          return {obj: o, anims: []};
+        }
+        case 'amf': return {obj: new THREE.AMFLoader(mgr).parse(buf), anims: []};
+        case 'step': case 'stp': return await parseStep(buf);
+      }
+      throw Object.assign(new Error('Unsupported format: .' + ext), {unsupportedExt: ext});
+    }
+    // Frees everything the previous model put on the GPU / in memory (geometries, its own materials, textures, helper materials).
+    // Shared materials (solid, hologram, wireframe...) are not touched.
+    function disposeModel(root) {
+      if (mixer) {mixer.stopAllAction(); mixer.uncacheRoot(root); mixer = null}
+      const geos = new Set(), mats = new Set(), texs = new Set();
+      const addMat = m => {
+        if (!m || mats.has(m)) return; mats.add(m);
+        ['solidA', 'solidAS', 'depthN', 'depthS'].forEach(k => {if (m.userData[k]) mats.add(m.userData[k])});
+        for (const k in m) {const t = m[k]; if (t && t.isTexture) texs.add(t)}
+      };
+      root.traverse(o => {
+        if (o.geometry) geos.add(o.geometry);
+        if (o.userData.isWire || o.userData.isHolo) return; // shared wireframe / hologram line materials
+        if (o.isMesh) [].concat(origOf(o)).forEach(addMat);
+        else if (o.material) [].concat(o.material).forEach(addMat); // points / lines
+      });
+      partList.forEach(p => mats.add(p.mat));
+      for (let i = SOLID_ALPHA.length - 1; i >= 0; i--) if (mats.has(SOLID_ALPHA[i])) SOLID_ALPHA.splice(i, 1);
+      geos.forEach(g => g.dispose()); mats.forEach(m => m.dispose()); texs.forEach(t => t.dispose());
+      while (outScene.children.length) outScene.remove(outScene.children[0]); // outline copies of the old meshes
+    }
+    function fixNormals(root) { // meshes without normals (OBJ/PLY etc.) must not stay black under light
+      root.traverse(o => {if (o.isMesh && o.geometry && o.geometry.attributes.position && !o.geometry.attributes.normal) o.geometry.computeVertexNormals()});
+    }
+    // Vertex colors in PLY / STL / OBJ / FBX / DAE... files are sRGB values, the renderer works in linear: convert them once.
+    // (glTF stores them linear, the 3MF loader converts them itself, STEP has none.)
+    function fixVertexColors(root, ext) {
+      if (['glb', 'gltf', '3mf', 'step', 'stp'].includes(ext)) return;
+      const done = new Set(), c = new THREE.Color();
+      root.traverse(o => {
+        const a = (o.isMesh || o.isPoints) && o.geometry && o.geometry.attributes.color;
+        if (!a || done.has(a)) return; done.add(a);
+        for (let i = 0; i < a.count; i++) {c.setRGB(a.getX(i), a.getY(i), a.getZ(i)).convertSRGBToLinear(); a.setXYZ(i, c.r, c.g, c.b)}
+        a.needsUpdate = true;
+      });
+    }
+    // ---- Alpha channel (leaf cards, hair, fences, decals...) ----
+    // A texture with a transparent channel is detected when it is first uploaded to the GPU (its image is certainly loaded then).
+    // Mostly binary alpha -> alpha test (cut-out: no sorting problems, double sided); soft alpha (glass...) -> blending.
+    // glTF is skipped: its own alphaMode (OPAQUE / MASK / BLEND) is already handled by the loader.
+    const SOLID_ALPHA = [];
+    function scanAlpha(img) { // -> {t: translucent pixel fraction, mid: share of soft (neither opaque nor clear) pixels among them} | null when unreadable
+      try {
+        let d, w, h;
+        if (img.data && img.width) {w = img.width; h = img.height; d = img.data; if (d.length < w * h * 4) return null} // DataTexture (TGA): RGBA bytes
+        else {
+          const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height; if (!iw || !ih) return null;
+          const k = Math.min(1, 256 / Math.max(iw, ih)); w = Math.max(1, Math.round(iw * k)); h = Math.max(1, Math.round(ih * k));
+          const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.drawImage(img, 0, 0, w, h); d = x.getImageData(0, 0, w, h).data;
+        }
+        let lo = 0, mid = 0; for (let i = 3; i < w * h * 4; i += 4) {const a = d[i]; if (a < 250) {if (a < 10) lo++; else mid++} }
+        return {t: (lo + mid) / (w * h), mid: (lo + mid) ? mid / (lo + mid) : 0};
+      } catch (e) {return null} // tainted canvas etc.
+    }
+    function setAlphaMode(m, mode) {
+      if (!mode || m.userData.alphaMode) return;
+      m.userData.alphaMode = mode;
+      if (mode === 'cut') {m.alphaTest = 0.5; m.side = THREE.DoubleSide; m.userData.side0 = THREE.DoubleSide}
+      else {m.transparent = true; m.depthWrite = false}
+      m.needsUpdate = true;
+      applySolid(); applyShadow(); applyBF(); // solid view and shadows must follow
+    }
+    function watchAlpha(m) {
+      if (!m || m.userData.alphaWatched) return;
+      m.userData.alphaWatched = true;
+      if (m.alphaMap) {setAlphaMode(m, 'cut'); return } // e.g. MTL map_d
+      const t = m.map; if (!t) return;
+      const prev = t.onUpdate;
+      t.onUpdate = function (tex) {
+        if (prev) prev.call(this, tex);
+        if (m.userData.alphaChecked || !tex.image) return;
+        m.userData.alphaChecked = true;
+        const a = scanAlpha(tex.image);
+        if (a) {if (a.t > 0.002) setAlphaMode(m, a.mid < 0.35 ? 'cut' : 'blend')}
+        else if (/\.(png|tga)(\?|#|$)/i.test(tex.image.src || '')) setAlphaMode(m, 'cut'); // unreadable: harmless for opaque textures
+      };
+      if (t.image && t.image.complete !== false) t.needsUpdate = true; // make sure onUpdate fires for textures that were already uploaded
+    }
+    function fixTextures(root, isGltf) { // sharp textures at grazing angles + correct color space for loaders that do not set it
+      root.traverse(o => {
+        if (!o.isMesh) return;
+        [].concat(o.material).forEach(m => {
+          if (!m) return;
+          ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'bumpMap', 'specularMap', 'lightMap'].forEach(k => {
+            const t = m[k]; if (!t) return;
+            t.anisotropy = MAX_ANISO;
+            if (!isGltf && (k === 'map' || k === 'emissiveMap')) t.encoding = THREE.sRGBEncoding; // color textures are sRGB
+          });
+          if (!isGltf && !m.userData.colConv) { // colors stored in OBJ/FBX/DAE... files are sRGB; the renderer works in linear
+            m.userData.colConv = true;
+            ['color', 'emissive', 'specular'].forEach(k => {if (m[k] && m[k].convertSRGBToLinear) m[k].convertSRGBToLinear()});
+          }
+          // glTF glass (KHR_materials_transmission): this three.js build cannot refract, and a smooth opaque surface turns into a white mirror.
+          // Draw it as see-through glass instead: translucent, a little rough, no shadow, dark-leaning tint.
+          if (m.transmission > 0 && !m.userData.glass) {
+            m.userData.glass = true;
+            m.transparent = true; m.opacity = Math.max(GLASS_MIN, 1 - m.transmission * GLASS_CLEAR); m.transmission = 0;
+            m.depthWrite = false; m.roughness = Math.max(m.roughness, GLASS_ROUGH);
+          }
+          m.needsUpdate = true;
+        });
+      });
+    }
+    const GLASS_CLEAR = 0.85, GLASS_MIN = 0.12, GLASS_ROUGH = 0.25; // glass: how see-through / lowest opacity / minimum roughness
+    function fixAlpha(root) {
+      root.traverse(o => {if (o.isMesh && !o.userData.isWire) [].concat(o.material).forEach(watchAlpha)});
+    }
+    function frame() { // fit the camera to the model + put the grid on the floor
+      const box = new THREE.Box3().setFromObject(model), s = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+      const k = Math.max(s.x, s.y, s.z) || 1;
+      const wasOrtho = ortho; if (wasOrtho) setOrtho(false);
+      sceneK = k;
+      ctl.target.copy(c); pCam.position.copy(startDir(k * START_DIST)).add(c); pCam.near = k / 100; pCam.far = k * 100; pCam.updateProjectionMatrix();
+      if (wasOrtho) setOrtho(true);
+      floorY = box.min.y; applyFloor();
+      shadowFit(c, box.getBoundingSphere(new THREE.Sphere()).radius, box.min.y);
+    }
+    let modelName = '';
+    let loadBusy = 0; // a load() is running (it closes the card itself)
+    async function load(buf, name, opt) { // safety net: an unexpected error must never leave the card (and the lock) up
+      loadBusy++;
+      try {return await loadModel(buf, name, opt)} catch (e) {
+        console.error(e); plog('ERROR', 'load failed: ' + name + ': ' + errText(e) + errStack(e) + ' ' + heapStr());
+        hideLoad(); if (!model) {$('drop').style.display = ''; document.title = 'PolyPeek3D'}
+        showErr(friendlyErr(e), errText(e));
+      } finally {loadBusy--}
+    }
+    async function loadModel(buf, name, opt) {
+      const tok = ++loadTok, ext = extOf(name), t0 = performance.now();
+      $('err').hidden = true;
+      plog('OPEN', name + '|' + buf.byteLength);
+      plog('INFO', 'parsing ' + name + ' (' + mbOf(buf.byteLength) + ') ' + heapStr());
+      setInfo(() => tx('loading'));
+      if (buf.byteLength > BIG) ldOn = true;
+      $('drop').style.display = 'none';
+      showLoad('parsing', null, name); lateCard(); if (ldOn) await paint();
+      let res;
+      try {res = await parseModel(ext, buf)} catch (e) {
+        console.error(e); plog('ERROR', 'parse failed: ' + name + ' (' + mbOf(buf.byteLength) + '): ' + errText(e) + errStack(e) + ' ' + heapStr());
+        hideLoad(); if (!model) {$('drop').style.display = ''; document.title = 'PolyPeek3D'} document.documentElement.classList.remove('opening');
+        setInfo(() => tx('error') + (e && e.unsupportedExt ? tx('unsupported') + '.' + e.unsupportedExt : ((e && e.message) || e)));
+        showErr(e && e.unsupportedExt ? tx('unsupported') + '.' + e.unsupportedExt : friendlyErr(e), errText(e));
+        return
+      }
+      if (tok !== loadTok) return; // another model was opened in the meantime
+      plog('INFO', 'parsed in ' + Math.round(performance.now() - t0) + ' ms ' + heapStr());
+      plog('INFO', 'preparing scene');
+      showLoad('preparing', null); if (ldOn) await paint();
+      if (tok !== loadTok) return;
+      if (model) {scene.remove(model); disposeModel(model)} // free the previous model's GPU / memory
+      if (ext !== 'step' && ext !== 'stp') stopStepWorker(); // the STEP reader (and the file it holds) is not needed any more
+      const obj = new THREE.Group(); obj.add(res.obj); obj.animations = res.anims || []; // wrapper group: used to rotate Z-up models
+      modelExt = ext; modelName = name; document.title = name; /* the host shows it in the window title */ $('steprow').hidden = !(ext === 'step' || ext === 'stp'); upZ = (typeof ZM[ext] === 'boolean') ? ZM[ext] : ZUP_DEFAULT.includes(ext); obj.rotation.x = upZ ? -Math.PI / 2 : 0; $('upz').classList.toggle('on', upZ);
+      fixNormals(obj); fixVertexColors(obj, ext);
+      const isGltf = (ext === 'glb' || ext === 'gltf');
+      fixTextures(obj, isGltf);
+      if (!isGltf) fixAlpha(obj);
+      model = obj; scene.add(obj); buildParts(); applySolid(); applyWire(); applyShadow(); applyBF(); refreshWireVis();
+      let nb = 0; obj.traverse(o => {if (o.isBone) nb++});
+      $('skel').disabled = !nb; $('skel').classList.toggle('on', skel && nb > 0); applySkel();
+      if (!(opt && opt.keepView)) frame(); // changing the STEP detail keeps the camera where it is
+      let tris = 0, pts = 0, lns = 0; obj.traverse(o => {
+        if (o.isMesh) {tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3}
+        else if (o.isPoints) {pts += o.geometry.attributes.position.count}
+        else if (o.isLine) {lns++}
+      });
+      if (!tris && !pts && !lns) {plog('WARN', 'nothing drawable in ' + name + ' (' + mbOf(buf.byteLength) + ')'); showErr(tx('errEmpty'), name + ' · ' + mbOf(buf.byteLength))}
+      {const na = obj.animations.length; setInfo(() => name + ' · ' + (tris ? fmtN(tris) + ' ' + tx('tris') : '') + (pts ? (tris ? ' · ' : '') + fmtN(pts) + ' ' + tx('pts') : '') + (na ? ' · ' + tx('animCnt')(na) : '') + (nb ? ' · ' + tx('boneCnt')(nb) : ''))}
+      $('drop').style.display = 'none';
+      mixer = new THREE.AnimationMixer(obj); actions = obj.animations.map(a => mixer.clipAction(a));
+      mixer.timeScale = speed; actions.forEach(applyLoop);
+      mixer.addEventListener('finished', e => {if (e.action === cur) {setPlaying(false); updateUI()} }); // in "Once" mode stop when it finishes
+      animSrc = obj.animations; curIdx = 0; renderAnimList();
+      $('dock').hidden = !obj.animations.length; // no animations: the timeline is never shown
+      $('aw').hidden = obj.animations.length < 2; $('al').hidden = true; // the picker is hidden with 0 or 1 animation
+      cur = null; pick(0);
+      if (!solid) {plog('INFO', 'uploading textures'); await ensureTextures(true)} // opened in Material mode: upload the textures now, behind the loading card (small .gltf files with big external textures never showed the card before)
+      if (holoOn) await ensureHolo(true);
+      if (ldOn) {showLoad('preparing', null); await paint(); try {r.compile(scene, cam)} catch (e) { } } // shader compiling also happens behind the card
+      if (ldOn) await paint(); // keep the bar visible until the first draw (GPU upload) is done
+      if (tok === loadTok) hideLoad();
+      if (!autoFocused && !(opt && opt.keepView) && tok === loadTok) {autoFocused = true; setTimeout(() => {if (tok === loadTok) focusModel()}, 250)} // first model of the session: start framing, then one automatic focus
+      plog('INFO', 'ready: ' + name + ' · ' + fmtN(tris) + ' tris · ' + fmtN(pts) + ' pts · total ' + Math.round(performance.now() - t0) + ' ms ' + heapStr());
+    }
+    // ---- Timeline ----
+    const FPS = 30; // frame-step rate (fixed, because the frame rate stored in FBX is unreliable)
+    const IC = {
+      play: '<svg viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z"/></svg>',
+      pause: '<svg viewBox="0 0 16 16"><path d="M3 2h4v12H3zM9 2h4v12H9z"/></svg>',
+      prev: '<svg viewBox="0 0 16 16"><path d="M3 2h2v12H3zM14 2L6 8l8 6z"/></svg>',
+      next: '<svg viewBox="0 0 16 16"><path d="M11 2h2v12h-2zM2 2l8 6-8 6z"/></svg>',
+      once: '<svg viewBox="0 0 16 16"><path d="M1 6.5h9V3.5l5 4.5-5 4.5v-3H1z"/></svg>',
+      pingpong: '<svg viewBox="0 0 16 16"><path d="M0.5 8l4.5-4v2.5h6V4l4.5 4-4.5 4V9.5H5V12z"/></svg>',
+      repeat: '<svg viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path fill="none" d="M2.5 8V7a2.5 2.5 0 0 1 2.5-2.5h6"/><path fill="none" d="M13.5 8v1a2.5 2.5 0 0 1-2.5 2.5H5"/><path fill="currentColor" stroke="none" d="M10.5 1.8L14 4.5l-3.5 2.7zM5.5 8.8L2 11.5l3.5 2.7z"/></svg>'
+    };
+    const LOOPS = [['repeat', 'loopRepeat'], ['pingpong', 'loopPing'], ['once', 'loopOnce']];
+    function updateLoopBtn() {const l = LOOPS.find(x => x[0] === loopMode); $('loopb').innerHTML = IC[loopMode]; $('loopb').title = tx(l[1]) + tx('clickChange')}
+    $('prev').innerHTML = IC.prev; $('next').innerHTML = IC.next;
+    function curTime() { // real time shown on screen (accounts for the reverse direction in ping-pong mode)
+      const d = cur.getClip().duration; let t = Math.min(cur.time, d);
+      if (loopMode === 'pingpong' && cur._loopCount > 0 && (cur._loopCount & 1) === 1) t = d - t;
+      return t;
+    }
+    function updateUI() {
+      ['prev', 'play', 'next', 't'].forEach(id => $(id).disabled = !cur);
+      if (!cur) {$('t').value = 0; $('tl_l').textContent = ''; $('tl_r').textContent = ''; return }
+      const d = cur.getClip().duration, t = curTime();
+      $('t').value = t / d;
+      $('tl_l').textContent = t.toFixed(2) + ' / ' + d.toFixed(2) + tx('sec');
+      $('tl_r').textContent = tx('frame') + Math.round(t * FPS) + ' / ' + Math.round(d * FPS);
+    }
+    function applyLoop(a) {
+      if (loopMode === 'once') {a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true}
+      else {a.setLoop(loopMode === 'pingpong' ? THREE.LoopPingPong : THREE.LoopRepeat, Infinity); a.clampWhenFinished = false}
+    }
+    function setPlaying(v) {
+      // in "Once" mode, if the animation has finished, pressing play restarts it from the beginning
+      if (v && cur && loopMode === 'once' && cur.time >= cur.getClip().duration - 1e-4) cur.reset();
+      playing = v; $('play').innerHTML = v ? IC.pause : IC.play; if (cur) cur.paused = !v
+    }
+    function seek(t, wrap) {
+      if (!cur) return;
+      const d = cur.getClip().duration; t = wrap ? ((t % d) + d) % d : Math.max(0, Math.min(d, t));
+      setPlaying(false); cur.time = t; if (loopMode === 'pingpong') cur._loopCount = 0; mixer.update(0); updateUI();
+    }
+    function step(n) {if (cur) seek((Math.round(curTime() * FPS) + n) / FPS, true)}
+    function pick(i) {curIdx = i; if (cur) cur.stop(); cur = actions[i] || null; if (cur) {applyLoop(cur); cur.play(); cur.paused = !playing} updateUI(); $('abl').textContent = animNames[i] || '';[].forEach.call($('al').children, (b, k) => b.classList.toggle('on', k === i))}
+    // ---- Speed: preset buttons + fine-tune slider (0.1x - 3x) ----
+    const PRESETS = [0.25, 0.5, 0.75, 1, 1.5, 2];
+    const fmtSpd = v => parseFloat(v.toFixed(2)) + 'x';
+    PRESETS.forEach(v => {const b = document.createElement('button'); b.textContent = fmtSpd(v); b.dataset.v = v; b.onclick = () => setSpeed(v); $('spb').appendChild(b)});
+    function setSpeed(v) {
+      v = Math.max(0.1, Math.min(3, Math.round(v * 100) / 100));
+      speed = v; if (mixer) mixer.timeScale = v;
+      $('spl').textContent = $('spv').textContent = fmtSpd(v); $('sps').value = v;
+      [].forEach.call($('spb').children, b => b.classList.toggle('on', Math.abs(+b.dataset.v - v) < 1e-6));
+    }
+    $('sps').oninput = e => setSpeed(+e.target.value);
+    $('spd').onclick = e => {e.stopPropagation(); $('sp').hidden = !$('sp').hidden};
+    document.addEventListener('pointerdown', e => {if (!$('sp').hidden && !e.target.closest('#spw')) $('sp').hidden = true});
+    document.addEventListener('keydown', e => {if (e.key === 'Escape') {$('sp').hidden = true; $('al').hidden = true; closeX(); closeL()} });
+    setSpeed(speed);
+    $('loopb').onclick = () => {
+      loopMode = LOOPS[(LOOPS.findIndex(x => x[0] === loopMode) + 1) % LOOPS.length][0];
+      actions.forEach(applyLoop); updateLoopBtn();
+    };
+    $('ab').onclick = e => {e.stopPropagation(); $('al').hidden = !$('al').hidden};
+    document.addEventListener('pointerdown', e => {if (!$('al').hidden && !e.target.closest('#aw')) $('al').hidden = true});
+    $('play').onclick = () => setPlaying(!playing);
+    $('prev').onclick = () => step(-1);
+    $('next').onclick = () => step(1);
+    $('t').oninput = e => {if (cur) seek(e.target.value * cur.getClip().duration)};
+    setPlaying(true); updateLoopBtn(); updateUI();
+    // ---- Skeleton: bone lines + joint points (visible through the model) ----
+    let dotTex = null;
+    function getDotTex() {
+      if (dotTex) return dotTex;
+      const c = document.createElement('canvas'); c.width = c.height = 32;
+      const g = c.getContext('2d'); g.beginPath(); g.arc(16, 16, 14, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+      return dotTex = new THREE.CanvasTexture(c);
+    }
+    function clearSkel() {
+      skelObjs.forEach(o => {scene.remove(o); if (o.geometry) o.geometry.dispose()});
+      skelObjs = []; skelPts = null; skelBones = [];
+    }
+    function applySkel() {
+      clearSkel();
+      if (!skel || !model) return;
+      const bones = []; model.traverse(o => {if (o.isBone) bones.push(o)});
+      if (!bones.length) return;
+      const h = new THREE.SkeletonHelper(model);
+      // r128 has no SkeletonHelper.setColors: we write the vertex colors directly (bone start orange, tip light yellow)
+      const ca = h.geometry.attributes.color, c1 = lin(0xe07b39), c2 = lin(0xffd27a);
+      for (let i = 0; i < ca.count; i++) {const c = i % 2 ? c2 : c1; ca.setXYZ(i, c.r, c.g, c.b)}
+      ca.needsUpdate = true;
+      h.renderOrder = 3; scene.add(h); skelObjs.push(h);
+      const geo = new THREE.BufferGeometry();
+      const attr = new THREE.BufferAttribute(new Float32Array(bones.length * 3), 3); attr.setUsage(THREE.DynamicDrawUsage);
+      geo.setAttribute('position', attr);
+      const pts = new THREE.Points(geo, new THREE.PointsMaterial({size: 7, sizeAttenuation: false, color: lin(0xffe3b0), map: getDotTex(), alphaTest: 0.5, transparent: true, depthTest: false, depthWrite: false}));
+      pts.frustumCulled = false; pts.renderOrder = 4; scene.add(pts); skelObjs.push(pts);
+      skelPts = pts; skelBones = bones;
+    }
+    function updateSkelPoints() {
+      if (!skelPts) return;
+      const a = skelPts.geometry.attributes.position, e = new THREE.Vector3();
+      scene.updateMatrixWorld(); // current world positions of the bones (after the animation step)
+      for (let i = 0; i < skelBones.length; i++) {e.setFromMatrixPosition(skelBones[i].matrixWorld); a.setXYZ(i, e.x, e.y, e.z)}
+      a.needsUpdate = true;
+    }
+    // ---- Solid: a flat, light, lit surface instead of the model's own materials ----
+    const solidMat = new THREE.MeshStandardMaterial({color: lin('#f3f3f3'), roughness: 0.85, metalness: 0});
+    const solidMatSkin = new THREE.MeshStandardMaterial({color: lin('#f3f3f3'), roughness: 0.85, metalness: 0, skinning: true}); // r128: required for skinned meshes
+    function origOf(o) {if (!o.userData.orig) o.userData.orig = o.material; return o.userData.orig}
+    function solidFor(m, skin) { // flat gray surface; keeps the cut-out / transparency of the original material
+      if (!m.map || !(m.userData.alphaMode || m.alphaTest > 0 || m.transparent)) return skin ? solidMatSkin : solidMat; // (glTF MASK / BLEND materials count too)
+      const k = skin ? 'solidAS' : 'solidA';
+      if (!m.userData[k]) {
+        const s = new THREE.MeshStandardMaterial({color: solidMat.color, roughness: 0.85, metalness: 0, map: m.map, alphaTest: m.alphaTest, transparent: m.transparent, depthWrite: m.depthWrite, side: m.side, skinning: !!skin});
+        s.onBeforeCompile = sh => {sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', 'diffuseColor.a*=texture2D(map,vUv).a;')}; // only the alpha of the texture, not its colors
+        s.polygonOffset = wire; s.polygonOffsetFactor = 1; s.polygonOffsetUnits = 1;
+        SOLID_ALPHA.push(s); m.userData[k] = s;
+      }
+      return m.userData[k];
+    }
+    const hideMat = new THREE.MeshBasicMaterial({visible: false}); // stands in for a hidden part
+    function applySolid() {
+      if (!model) return;
+      syncParts();
+      model.traverse(o => {
+        if (!o.isMesh || o.userData.isWire) return;
+        const orig = origOf(o), ps = o.userData.parts, skin = o.isSkinnedMesh;
+        const sm = (m, i) => {
+          const p = ps && ps[i];
+          if (p && p.hidden) return hideMat;
+          const hl = !!p && (p === hoverP || p.sel); // highlighted parts get an orange outline (drawOutline); in Hologram mode they also turn into an orange hologram
+          if (holoOn) return hl ? (skin ? holoOrgSkin : holoOrg) : (skin ? holoFillSkin : holoFill); // highlighted part: the same hologram, but orange
+          if (p && solid && rnd) return p.mat;
+          return solid ? solidFor(m, skin) : m;
+        };
+        o.material = Array.isArray(orig) ? orig.map(sm) : sm(orig, 0);
+      });
+      applyHolo();
+    }
+    // ---- Hologram: every part becomes a faint blue additive glow + blue edge lines; the hovered / selected part turns orange ----
+    // (additive blending does not depend on the drawing order, so overlapping parts do not flicker)
+    const HOLO_COL = '#3fb8ff', HOLO_FILL = 0.10, HOLO_LINE = 0.85, HOLO_ANGLE = 25, HOLO_MAXTRIS = 300000; // colour, surface strength, line strength, edge angle (deg), lines skipped above this many triangles
+    let holoOn = false;
+    const HOLO_SEL_COL = '#e07b39', HOLO_SEL_FILL = 0.22; // highlighted (hovered / selected) part in Hologram mode: orange, same as the outline
+    const holoMk = (skin, col = HOLO_COL, op = HOLO_FILL) => new THREE.MeshBasicMaterial({color: lin(col), transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, skinning: skin, toneMapped: false});
+    const holoFill = holoMk(false), holoFillSkin = holoMk(true), holoOrg = holoMk(false, HOLO_SEL_COL, HOLO_SEL_FILL), holoOrgSkin = holoMk(true, HOLO_SEL_COL, HOLO_SEL_FILL);
+    const holoLineMat = new THREE.LineBasicMaterial({color: lin(HOLO_COL), transparent: true, opacity: HOLO_LINE, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false});
+    const holoLineOrg = new THREE.LineBasicMaterial({color: lin(HOLO_SEL_COL), transparent: true, opacity: HOLO_LINE, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false}); // edge lines of a highlighted part
+    function setHoloL(v) {holoLineMat.opacity = holoLineOrg.opacity = v; $('holoL').value = Math.round(v * 100); $('v_holoL').textContent = Math.round(v * 100) + '%'}
+    try {const hv = parseFloat(localStorage.getItem('pp3d.holoL')); setHoloL(hv >= 0.1 && hv <= 1 ? hv : HOLO_LINE)} catch (e) {setHoloL(HOLO_LINE)}
+    $('holoL').oninput = e => {const v = e.target.value / 100; setHoloL(v); try {localStorage.setItem('pp3d.holoL', String(v))} catch (x) { } };
+    // Heavy one-time work gets the loading card (the page is busy and cannot repaint while it runs):
+    //  - hologram edges: computed once per mesh (static meshes only, not for animated skins)
+    //  - textures: a model opened in Solid mode has not uploaded its textures to the GPU yet; the first switch to Material does it
+    const BUSY_PIXELS = 4e6, BUSY_TRIS = 60000; // below this the work is quick and is done silently
+    const yieldUI = () => new Promise(res => {let d = false; const f = () => {if (!d) {d = true; setTimeout(res, 0)} }; requestAnimationFrame(f); setTimeout(f, 60)});
+    let busyOp = false;
+    async function ensureHolo(keepCard) { // keepCard: called by load(), which closes the card itself
+      if (!model) return;
+      const todo = []; model.traverse(o => {if (o.isMesh && !o.userData.isWire && !o.isSkinnedMesh && o.userData.he === undefined) todo.push(o)});
+      if (!todo.length) return;
+      const triOf = o => {const g = o.geometry; return (g.index ? g.index.count : g.attributes.position.count) / 3};
+      const heavy = todo.reduce((a, o) => a + triOf(o), 0) > BUSY_TRIS;
+      if (heavy) {ldOn = true; showLoad('holoLoad', 0, ''); await paint()}
+      let t0 = performance.now();
+      for (let i = 0; i < todo.length; i++) {
+        const o = todo[i], g = o.geometry;
+        o.userData.he = triOf(o) > HOLO_MAXTRIS ? false : (() => {const l = new THREE.LineSegments(new THREE.EdgesGeometry(g, HOLO_ANGLE), holoLineMat); l.userData.isHolo = true; l.frustumCulled = false; l.visible = false; o.add(l); return l})();
+        if (heavy && performance.now() - t0 > 40) {showLoad('holoLoad', (i + 1) / todo.length); await yieldUI(); t0 = performance.now()}
+      }
+      if (heavy && !keepCard) hideLoad();
+    }
+    const texUp = new WeakSet(), texWait = new WeakSet();
+    async function ensureTextures(keepCard) { // keepCard: called by load(), which closes the card itself
+      if (!model) return;
+      const list = [], seen = new Set();
+      model.traverse(o => {
+        if (!o.isMesh || o.userData.isWire) return;
+        [].concat(origOf(o)).forEach(m => {for (const k in m) {const t = m[k]; if (t && t.isTexture && !seen.has(t) && !texUp.has(t)) {seen.add(t); list.push(t)} } });
+      });
+      if (!list.length) return;
+      const px = list.reduce((a, t) => a + (t.image && t.image.width ? t.image.width * t.image.height : 0), 0);
+      const heavy = px > BUSY_PIXELS;
+      if (heavy) {ldOn = true; showLoad('texLoad', 0, ''); await paint()}
+      let t0 = performance.now();
+      for (let i = 0; i < list.length; i++) {
+        const t = list[i];
+        if (t.image && t.image.complete === false) { // still downloading (OBJ / MTL): do it when it arrives
+          if (!texWait.has(t)) {texWait.add(t); t.image.addEventListener('load', () => {if (!solid && !busyOp) ensureTextures()}, {once: true})}
+          continue;
+        }
+        try {r.initTexture(t)} catch (e) { }
+        texUp.add(t);
+        if (heavy && performance.now() - t0 > 40) {showLoad('texLoad', (i + 1) / list.length); await yieldUI(); t0 = performance.now()}
+      }
+      if (heavy && !keepCard) hideLoad();
+    }
+    function applyHolo() {
+      if (!model) return;
+      model.traverse(o => {
+        if (!o.isMesh || o.userData.isWire) return;
+        const he = o.userData.he;
+        if (he) {const ps = o.userData.parts, hl = !!ps && ps.length === 1 && (ps[0] === hoverP || ps[0].sel); he.visible = holoOn && !partsHidden(o); he.material = hl ? holoLineOrg : holoLineMat}
+      });
+    }
+    // ---- Parts: every mesh (every material slot of a multi-material mesh) has its own colour (Solid + Random) and a name list with hide / highlight ----
+    let rnd = false, solHex = '#f3f3f3', listOn = false, hoverP = null, partList = [];
+    const partTris = (g, mi) => { // triangle count of a mesh, or of one material slot of it
+      const total = (g.index ? g.index.count : g.attributes.position.count) / 3;
+      if (mi < 0 || !g.groups.length) return total;
+      return g.groups.filter(x => x.materialIndex === mi).reduce((a, x) => a + x.count / 3, 0);
+    };
+    function partMat(m, col, skin) {
+      const pm = new THREE.MeshStandardMaterial({color: col, roughness: 0.85, metalness: 0, skinning: !!skin, side: m.side});
+      pm.onBeforeCompile = sh => {if (pm.map) sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', 'diffuseColor.a*=texture2D(map,vUv).a;')}; // only the texture's alpha
+      pm.polygonOffset = wire; pm.polygonOffsetFactor = 1; pm.polygonOffsetUnits = 1;
+      return pm;
+    }
+    function syncParts() { // cut-out / transparent originals (leaves...) keep their see-through shape
+      partList.forEach(p => {
+        const cut = p.src.map && (p.src.userData.alphaMode || p.src.alphaTest > 0 || p.src.transparent);
+        const map = cut ? p.src.map : null;
+        if (p.mat.map !== map || p.mat.alphaTest !== (cut ? p.src.alphaTest : 0)) {
+          p.mat.map = map; p.mat.alphaTest = cut ? p.src.alphaTest : 0; p.mat.transparent = !!(cut && p.src.transparent); p.mat.depthWrite = cut ? p.src.depthWrite : true; p.mat.needsUpdate = true;
+        }
+      });
+    }
+    function buildParts() {
+      partList = []; hoverP = null;
+      if (!model) {renderParts(); return }
+      let n = 0;
+      model.traverse(o => {
+        if (!o.isMesh || o.userData.isWire) return;
+        const orig = origOf(o), arr = Array.isArray(orig), slots = arr ? orig : [orig];
+        const base = o.name || (o.parent && o.parent !== model && o.parent.name) || '';
+        const ents = [];
+        slots.forEach((m, i) => {
+          const h = (n * 137.508) % 360, l = 0.56 + 0.1 * ((n % 3) / 2), col = lin(new THREE.Color().setHSL(h / 360, 0.5, l).getHex()); // golden-angle hues: neighbours differ clearly
+          const pm = partMat(m, col, o.isSkinnedMesh);
+          const nm = (arr && slots.length > 1) ? ((base && (base + ' · ' + (m.name || ('#' + (i + 1))))) || m.name || '') : (base || m.name || ''); // empty: "Part N" in the current language (partName)
+          const ent = {name: nm, num: n + 1, hex: '#' + new THREE.Color().setHSL(h / 360, 0.5, l).getHexString(), mat: pm, src: m, mesh: o, hidden: false, tris: partTris(o.geometry, arr ? i : -1)};
+          partList.push(ent); ents.push(ent); n++;
+        });
+        o.userData.parts = ents;
+      });
+      syncParts(); renderParts();
+    }
+    function partsHidden(o) {const ps = o.userData.parts; return !!ps && ps.length > 0 && ps.every(p => p.hidden)}
+    function refreshWireVis() {if (model) model.traverse(o => {if (o.userData.wo) o.userData.wo.visible = wire && !partsHidden(o)})}
+    const EYE = '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/><path class="sl" d="M4 20L20 4"/></svg>';
+    function partsChanged() { // after hide / select changes: update the rows in place (keeps the scroll position)
+      partList.forEach(p => {if (p.row) {p.row.classList.toggle('off', p.hidden); p.row.classList.toggle('sel', !!p.sel)} });
+      hoverP = null; applySolid(); refreshWireVis();
+    }
+    function selPart(p, multi) { // click = select (the part keeps glowing); Ctrl / Shift / Cmd + click = add to / remove from the selection
+      if (p.hidden) return;
+      if (multi) p.sel = !p.sel;
+      else {const only = p.sel && partList.filter(x => x.sel).length === 1; partList.forEach(x => x.sel = false); p.sel = !only}
+      partsChanged();
+    }
+    function clearSel() {if (partList.some(p => p.sel)) {partList.forEach(p => p.sel = false); partsChanged()} }
+    // ---- Picking: click a part in the 3D view to select it, click empty space to clear the selection (a drag = camera move, not a click) ----
+    const pickRay = new THREE.Raycaster(), pickV = new THREE.Vector2(); let pickDown = null;
+    cv.addEventListener('pointerdown', e => {pickDown = e.button === 0 ? {x: e.clientX, y: e.clientY, t: performance.now()} : null});
+    cv.addEventListener('pointerup', e => {
+      const d = pickDown; pickDown = null;
+      if (!d || !model || !partList.length || e.button !== 0) return;
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5 || performance.now() - d.t > 600) return;
+      const r = cv.getBoundingClientRect(); pickV.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      pickRay.setFromCamera(pickV, cam);
+      const ms = []; model.traverse(o => {if (o.isMesh && !o.userData.isWire && o.visible && o.userData.parts) ms.push(o)});
+      let hit = null;
+      for (const h of pickRay.intersectObjects(ms, false)) { // nearest hit that is not a hidden part
+        const ps = h.object.userData.parts, p = ps.length > 1 ? ps[h.face ? h.face.materialIndex : 0] : ps[0];
+        if (p && !p.hidden) {hit = p; break}
+      }
+      const multi = e.ctrlKey || e.shiftKey || e.metaKey;
+      if (hit) {
+        if (multi) selPart(hit, true); else if (!hit.sel || partList.filter(x => x.sel).length > 1) {partList.forEach(x => x.sel = false); hit.sel = true; partsChanged()} // (a click on the selected part keeps it selected)
+        if (hit.row) hit.row.scrollIntoView({block: 'nearest'});
+      } else if (!multi) clearSel();
+    });
+    const partName = p => p.name || (tx('partWord') + ' ' + p.num);
+    function renderParts() {
+      const box = $('plb'); box.textContent = '';
+      const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k' : String(Math.round(n));
+      partList.forEach(p => {
+        const row = document.createElement('div'); row.className = 'pi' + (p.hidden ? ' off' : '') + (p.sel ? ' sel' : ''); p.row = row;
+        const dot = document.createElement('i'); dot.style.background = p.hex;
+        const nm = document.createElement('span'); nm.textContent = nm.title = partName(p);
+        const tr = document.createElement('small'); tr.textContent = fmt(p.tris);
+        const eye = document.createElement('button'); eye.className = 'pe'; eye.innerHTML = EYE; eye.title = tx('eyeTip');
+        row.append(dot, nm, tr, eye);
+        row.onmouseenter = () => {if (p.hidden) return; hoverP = p; applySolid()};
+        row.onmouseleave = () => {if (hoverP === p) {hoverP = null; applySolid()} };
+        eye.onclick = e => {e.stopPropagation(); p.hidden = !p.hidden; if (p.hidden) p.sel = false; partsChanged()};
+        eye.ondblclick = e => e.stopPropagation(); // double click on the eye is two quick hide / show clicks, not a focus
+        row.onclick = e => selPart(p, e.ctrlKey || e.shiftKey || e.metaKey);
+        row.ondblclick = e => { // double click: select it (the 2nd click of the pair would have deselected it) and fly to it
+          if (p.hidden || e.ctrlKey || e.shiftKey || e.metaKey) return;
+          if (!p.sel || partList.filter(x => x.sel).length > 1) {partList.forEach(x => x.sel = false); p.sel = true; partsChanged()}
+          focusParts([p]);
+        };
+        box.appendChild(row);
+      });
+      $('plt').textContent = tx('partsT') + ' (' + partList.length + ')';
+    }
+    // Keyboard focus: buttons and sliders must not keep the focus after a mouse click. Otherwise the last clicked control
+    // gets a focus frame on the next key press, Space / Enter press it again, and the shortcuts (H, Shift+H, Alt+H, F) were
+    // ignored while a slider (e.g. the timeline) had the focus. The 3D view cannot take the focus itself, so a click there
+    // (OrbitControls cancels the browser's default) used to leave the focus on the last control.
+    const typingIn = t => !!t && (t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || (t.tagName === 'INPUT' && /^(text|search|number|email|password|url)$/i.test(t.type)));
+    function dropFocus() {const a = document.activeElement; if (a && a !== document.body && !typingIn(a) && !(a.tagName === 'INPUT' && a.type === 'color')) a.blur()}
+    document.addEventListener('pointerup', () => setTimeout(dropFocus, 0), true); // after the click / slider drag has been handled
+    cv.addEventListener('pointerdown', dropFocus);
+    document.getElementById('gizmo').addEventListener('pointerdown', dropFocus);
+    document.addEventListener('change', e => {if (e.target.type === 'color' || e.target.type === 'checkbox') setTimeout(dropFocus, 0)}, true); // colour picker closed / checkbox toggled
+    // F = fly to the selected parts
+    document.addEventListener('keydown', e => {
+      if (e.code !== 'KeyF' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !partList.length) return;
+      if (typingIn(e.target)) return;
+      const sel = partList.filter(p => p.sel && !p.hidden); if (!sel.length) return;
+      e.preventDefault(); focusParts(sel);
+    });
+    // Shortcuts (like Blender): H = hide the selected parts, Shift+H = show only the selected parts, Alt+H = show everything
+    document.addEventListener('keydown', e => {
+      if (e.code !== 'KeyH' || e.ctrlKey || e.metaKey || !partList.length) return;
+      if (typingIn(e.target)) return;
+      const sel = partList.filter(p => p.sel);
+      if (e.altKey) partList.forEach(p => p.hidden = false);
+      else if (e.shiftKey) {if (!sel.length) return; partList.forEach(p => {p.hidden = !p.sel})}
+      else {if (!sel.length) return; sel.forEach(p => {p.hidden = true; p.sel = false})}
+      e.preventDefault(); partsChanged();
+    });
+    // ---- Shading modes (radio): Material | Random | Solid | Hologram. Wireframe is separate and works on top of any of them ----
+    let mode = 'mat';
+    function modeBtns() {
+      [['mat', 'mat'], ['rndb', 'rnd'], ['solid', 'solid'], ['holo', 'holo']].forEach(([id, m]) => $(id).classList.toggle('on', mode === m));
+      $('parts').classList.toggle('on', listOn); $('pl').hidden = !listOn;
+    }
+    async function setMode(m) {
+      if (busyOp || m === mode) return; busyOp = true;
+      try {
+        mode = m; solid = m === 'solid' || m === 'rnd'; rnd = m === 'rnd'; holoOn = m === 'holo';
+        modeBtns();
+        if (holoOn) await ensureHolo(); else if (m === 'mat') await ensureTextures(); // textures are uploaded behind the loading card
+        applySolid(); applyWire(); refreshWireVis();
+      } catch (e) {
+        plog('ERROR', 'mode ' + m + ' failed: ' + errText(e) + errStack(e))
+      } finally {busyOp = false; if (ldOn && !loadBusy) hideLoad()} // never leave the card (and the lock) up
+    }
+    $('parts').onclick = () => {listOn = !listOn; modeBtns()};
+    // Solid settings (arrow next to the Solid button): colour + random
+    function setSolCol(hex) {
+      solHex = hex; const c = lin(hex);
+      solidMat.color.copy(c); solidMatSkin.color.copy(c); SOLID_ALPHA.forEach(m => m.color.copy(c));
+    }
+    function saveSol() {try {localStorage.setItem('pp3d.solid', JSON.stringify({col: solHex}))} catch (e) { } }
+    function syncSol() {$('solcol').value = solHex}
+    $('solcol').oninput = e => {setSolCol(e.target.value); saveSol()};
+    try {const ss = JSON.parse(localStorage.getItem('pp3d.solid') || 'null'); if (ss && typeof ss === 'object') {if (/^#[0-9a-f]{6}$/i.test(ss.col)) setSolCol(ss.col)} } catch (e) { }
+    syncSol();
+    // ---- Wireframe: surfaces stay as they are, black edge lines of constant width are drawn on top ----
+    const wireMat = new THREE.MeshBasicMaterial({color: 0x000000, wireframe: true, transparent: true, depthWrite: false});
+    const wireMatSkin = new THREE.MeshBasicMaterial({color: 0x000000, wireframe: true, skinning: true, transparent: true, depthWrite: false}); // r128: skinning:true is required for skinned meshes
+    function applyWire() {
+      if (!model) return;
+      const ms = []; model.traverse(o => {if (o.isMesh && !o.userData.isWire) ms.push(o)});
+      ms.forEach(o => {
+        if (wire && !o.userData.wo) {
+          let w;
+          if (o.isSkinnedMesh) {w = new THREE.SkinnedMesh(o.geometry, wireMatSkin); w.bind(o.skeleton, o.bindMatrix)}
+          else w = new THREE.Mesh(o.geometry, wireMat);
+          w.userData.isWire = true; w.frustumCulled = false; w.renderOrder = 1;
+          o.add(w); o.userData.wo = w;
+        }
+        if (o.userData.wo) o.userData.wo.visible = wire && !partsHidden(o);
+        // push the surface back slightly so it does not z-fight with the lines
+        [].concat(origOf(o)).forEach(m => {m.polygonOffset = wire; m.polygonOffsetFactor = 1; m.polygonOffsetUnits = 1});
+      });
+      [solidMat, solidMatSkin].concat(SOLID_ALPHA, partList.map(p => p.mat)).forEach(m => {m.polygonOffset = wire; m.polygonOffsetFactor = 1; m.polygonOffsetUnits = 1});
+    }
+    // WebGL line width cannot go below 1 pixel. So when zooming out (triangles shrink on screen)
+    // we lower the line opacity: fully black when close, fading out when far.
+    const WIRE_FULL = 14, WIRE_MIN = 3; // triangle edge >=14px on screen: fully black, <=3px: faintest
+    function wireEdgeWorld() { // average triangle edge length of the model (world units)
+      if (model.userData.edgeW) return model.userData.edgeW;
+      let sum = 0, n = 0, Dg = 0;
+      model.traverse(o => {
+        if (!o.isMesh || o.userData.isWire) return;
+        const g = o.geometry, pos = g.attributes.position, idx = g.index; if (!pos) return;
+        if (!g.boundingBox) g.computeBoundingBox();
+        Dg = Math.max(Dg, g.boundingBox.getSize(new THREE.Vector3()).length());
+        const tris = (idx ? idx.count : pos.count) / 3, st = Math.max(1, Math.floor(tris / 5000));
+        const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+        for (let t = 0; t < tris; t += st) {
+          const i0 = idx ? idx.getX(t * 3) : t * 3, i1 = idx ? idx.getX(t * 3 + 1) : t * 3 + 1, i2 = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+          a.fromBufferAttribute(pos, i0); b.fromBufferAttribute(pos, i1); c.fromBufferAttribute(pos, i2);
+          sum += (a.distanceTo(b) + b.distanceTo(c) + c.distanceTo(a)) / 3; n++;
+        }
+      });
+      // to be scale independent: (edge / mesh size) * the model's world size
+      const Dw = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3()).length();
+      return model.userData.edgeW = (n && Dg) ? (sum / n / Dg) * Dw : Dw / 100;
+    }
+    function updateWireFade() {
+      if (!wire || !model) return;
+      const visH = ortho ? oH / oCam.zoom : 2 * cam.position.distanceTo(ctl.target) * Math.tan(pCam.fov * Math.PI / 360);
+      const edgePx = wireEdgeWorld() * innerHeight / visH;
+      const t = Math.max(0, Math.min(1, (edgePx - WIRE_MIN) / (WIRE_FULL - WIRE_MIN)));
+      const op = 0.06 + 0.94 * t;
+      wireMat.opacity = op; wireMatSkin.opacity = op;
+    }
+    // ---- The state of the view buttons is remembered (ortho, floor, skeleton, wireframe). The shading mode always starts as Material ----
+    function saveView() {try {localStorage.setItem('pp3d.view', JSON.stringify({ortho, grid: floorOn, skel, wire}))} catch (e) { } }
+    $('skel').onclick = () => {skel = !skel; $('skel').classList.toggle('on', skel); applySkel(); saveView()};
+    $('mat').onclick = () => setMode('mat');
+    $('rndb').onclick = () => setMode('rnd');
+    $('solid').onclick = () => setMode('solid');
+    $('holo').onclick = () => setMode('holo');
+    $('ortho').onclick = () => {setOrtho(!ortho); saveView()};
+    $('grid').onclick = () => {floorOn = !floorOn; $('grid').classList.toggle('on', floorOn); applyFloor(); saveView()};
+    $('wire').onclick = () => {wire = !wire; syncWireUi(); applyWire(); saveView()};
+    function syncWireUi() {$('wire').classList.toggle('on', wire); $('shw').classList.toggle('won', wire)}
+    function loadFiles(list) {
+      list = [].slice.call(list || []); if (!list.length) return;
+      const main = list.find(f => MODEL_EXT.indexOf(extOf(f.name)) >= 0);
+      if (!main) {const nm0 = list[0].name; setInfo(() => tx('unsupported') + nm0); return }
+      blobUrls.forEach(u => URL.revokeObjectURL(u)); blobUrls = [];
+      ctx = {base: null, files: new Map()}; srcReread = () => main.arrayBuffer();
+      list.forEach(f => {if (f !== main) {const u = URL.createObjectURL(f); blobUrls.push(u); ctx.files.set(f.name.toLowerCase(), u)} }); // .mtl, .bin, textures
+      const fr = new FileReader();
+      ldOn = main.size > BIG; showLoad('reading', 0, main.name);
+      fr.onprogress = e => {if (e.lengthComputable) showLoad('reading', e.loaded / e.total)};
+      fr.onload = () => load(fr.result, main.name);
+      fr.onerror = () => {const m = (fr.error && fr.error.message) || ''; plog('ERROR', 'file read failed: ' + main.name + ' (' + mbOf(main.size) + '): ' + m); hideLoad(); setInfo(() => tx('error') + m); showErr(tx('errGen'), m)};
+      plog('INFO', 'reading ' + main.name + ' (' + mbOf(main.size) + ')');
+      fr.readAsArrayBuffer(main);
+    }
+    $('f').onchange = e => {loadFiles(e.target.files); e.target.value = ''};
+    $('upz').onclick = () => {if (!model) return; upZ = !upZ; ZM[modelExt] = upZ; try {localStorage.setItem('pp3d.zup', JSON.stringify(ZM))} catch (e) { } model.rotation.x = upZ ? -Math.PI / 2 : 0; model.userData.edgeW = 0; $('upz').classList.toggle('on', upZ); frame()};
+    addEventListener('dragover', e => e.preventDefault());
+    addEventListener('drop', e => {e.preventDefault(); if (!locked) loadFiles(e.dataTransfer.files)});
+    const q = new URLSearchParams(location.search);
+    if (q.get('crash')) { // the host restarted the viewer after its renderer process died
+      const cn = q.get('name') || '', rs = q.get('reason') || '', oom = /memory/i.test(rs);
+      showErr(tx('errCrash')(cn, oom), [rs && 'reason: ' + rs, q.get('size') > 0 && mbOf(+q.get('size'))].filter(Boolean).join(' · '));
+    }
+    if (q.get('file')) {
+      const fu = q.get('file');
+      ctx = {base: fu.slice(0, fu.lastIndexOf('/') + 1), files: new Map()}; srcReread = () => fetchBuf(fu, () => { }); // when opened by double-click, textures/mtl/bin are read from the same folder
+      const nm = q.get('name') || 'model.fbx';
+      setInfo(() => tx('loading')); $('drop').style.display = 'none';
+      fetchBuf(fu, (p, total) => {if (total > BIG) ldOn = true; showLoad('reading', p, nm)}).then(b => load(b, nm)).catch(e => {plog('ERROR', 'open failed: ' + nm + ': ' + errText(e) + errStack(e)); hideLoad(); $('drop').style.display = ''; document.title = 'PolyPeek3D'; document.documentElement.classList.remove('opening'); setInfo(() => tx('error') + e.message); showErr(friendlyErr(e), errText(e))});
+      plog('INFO', 'reading ' + nm);
+    }
+
+    // ---- Blender-style axis gizmo (top right) ----
+    // Blender: X right, Y forward, Z up.  three.js: X right, Y up, Z toward the viewer.  So Blender Z = three Y, Blender Y = three -Z
+    const gz = document.getElementById('gizmo'), gx = gz.getContext('2d'), GS = 120;
+    gz.width = GS * devicePixelRatio; gz.height = GS * devicePixelRatio;
+    const AX = [
+      {n: 'X', c: '#ff3653', v: new THREE.Vector3(1, 0, 0)},
+      {n: 'Y', c: '#8adb00', v: new THREE.Vector3(0, 0, -1)},
+      {n: 'Z', c: '#2c8fff', v: new THREE.Vector3(0, 1, 0)}
+    ];
+    let gItems = [], gHover = null, camAnim = null, focusAnim = null;
+    const POLE_EPS = 0.001; // small offset (rad) so the camera does not stop exactly at the pole in top/bottom views
+    let lastH = {x: 0, z: 1}; // last horizontal direction of the camera (remembered so it does not spin at the pole)
+    const FRONT = 0.995; // an end facing the camera more than this is treated as inactive
+    function drawGizmo() {
+      const d = devicePixelRatio; gx.setTransform(d, 0, 0, d, 0, 0); gx.clearRect(0, 0, GS, GS);
+      const q = cam.quaternion.clone().invert();
+      gItems = [];
+      AX.forEach(a => [1, -1].forEach(s => {
+        const v = a.v.clone().multiplyScalar(s).applyQuaternion(q);
+        gItems.push({a: a, s: s, x: GS / 2 + v.x * 40, y: GS / 2 - v.y * 40, z: v.z});
+      }));
+      gItems.sort((p, k) => p.z - k.z);
+      gx.textAlign = 'center'; gx.textBaseline = 'middle';
+      gItems.forEach(it => {
+        const pos = it.s > 0, hov = gHover === it;
+        const rad = pos ? 11 : 8;
+        if (it.z > FRONT) { // we are looking exactly along this axis: inactive, hollow ring
+          gx.globalAlpha = 0.9; gx.strokeStyle = it.a.c; gx.lineWidth = 2;
+          gx.beginPath(); gx.arc(it.x, it.y, rad + 1, 0, Math.PI * 2); gx.stroke();
+          gx.globalAlpha = 1; return;
+        }
+        const back = it.z < -FRONT; // the opposite end directly behind: active
+        if (pos) {gx.strokeStyle = it.a.c; gx.lineWidth = 3; gx.beginPath(); gx.moveTo(GS / 2, GS / 2); gx.lineTo(it.x, it.y); gx.stroke()}
+        gx.globalAlpha = pos || hov || back ? 1 : 0.45;
+        gx.fillStyle = it.a.c; gx.beginPath(); gx.arc(it.x, it.y, rad, 0, Math.PI * 2); gx.fill();
+        gx.globalAlpha = 1;
+        if (hov) {gx.strokeStyle = '#fff'; gx.lineWidth = 2; gx.stroke()}
+        if (pos || hov || back) {gx.fillStyle = '#111'; gx.font = 'bold 12px system-ui,sans-serif'; gx.fillText((pos ? '' : '-') + it.a.n, it.x, it.y + 1)}
+      });
+    }
+    function gizmoHit(e) {
+      const b = gz.getBoundingClientRect(), mx = e.clientX - b.left, my = e.clientY - b.top;
+      let best = null;
+      gItems.forEach(it => {if (it.z > FRONT) return; const r = it.s > 0 ? 13 : 10; if (Math.hypot(it.x - mx, it.y - my) <= r && (!best || it.z > best.z)) best = it});
+      return best;
+    }
+    function flipQ(a, b) {
+      if (a.dot(b) < -0.9999) {const ax = Math.abs(a.y) > 0.99 ? new THREE.Vector3(lastH.z, 0, -lastH.x) : new THREE.Vector3(0, 1, 0); return new THREE.Quaternion().setFromAxisAngle(ax, Math.PI)}
+      return new THREE.Quaternion().setFromUnitVectors(a, b);
+    }
+    gz.addEventListener('pointermove', e => {gHover = gizmoHit(e); gz.style.cursor = gHover ? 'pointer' : 'default'});
+    gz.addEventListener('pointerleave', () => {gHover = null});
+    gz.addEventListener('click', e => {
+      const it = gizmoHit(e); if (!it) return;
+      const dir = it.a.v.clone().multiplyScalar(it.s);
+      focusAnim = null;
+      const from = cam.position.clone().sub(ctl.target);
+      const dist = from.length() || 1;
+      from.normalize();
+      const to = dir.clone();
+      if (Math.abs(to.y) > 0.99) {const sn = Math.sin(POLE_EPS), cs = Math.cos(POLE_EPS); to.set(0, Math.sign(to.y) * cs, sn)}
+      to.normalize();
+      // Spherical (azimuth + polar angle) transition: the camera "up" vector always stays world Y, no flipping
+      const th0 = Math.atan2(lastH.x, lastH.z);
+      const ph0 = Math.acos(Math.max(-1, Math.min(1, from.y)));
+      const phT = Math.acos(Math.max(-1, Math.min(1, to.y)));
+      let dth = Math.atan2(to.x, to.z) - th0;
+      dth = Math.atan2(Math.sin(dth), Math.cos(dth)); // shortest direction (-π, π]
+      camAnim = {t0: performance.now(), dur: 500, to: to, dist: dist, th0: th0, dth: dth, ph0: ph0, dph: phT - ph0};
+    });
+    // cancel the transition if the user grabs the scene
+    cv.addEventListener('pointerdown', () => {camAnim = null; focusAnim = null});
+    cv.addEventListener('wheel', () => {camAnim = null; focusAnim = null}, {passive: true});
+
+    // ---- Double-click to focus ----
+    // Double-click on the model: the orbit center moves to the clicked point (so rotating is comfortable again after panning).
+    // Double-click on empty space: the whole model is framed.
+    // In r128 SkinnedMesh raycast ignores animation, so we apply the bone transforms ourselves here.
+    const comp = (a, i, k) => k === 0 ? a.getX(i) : k === 1 ? a.getY(i) : k === 2 ? a.getZ(i) : a.getW(i);
+    function forEachWorldVertex(cb) {
+      model.updateMatrixWorld(true);
+      const v = new THREE.Vector3(), t = new THREE.Vector3(), acc = new THREE.Vector3(), m = new THREE.Matrix4();
+      model.traverse(o => {
+        if (!o.isMesh || o.userData.isWire) return;
+        const g = o.geometry, pos = g.attributes.position; if (!pos) return;
+        if (o.isSkinnedMesh && g.attributes.skinIndex && g.attributes.skinWeight) {
+          o.skeleton.update();
+          const si = g.attributes.skinIndex, sw = g.attributes.skinWeight, bm = o.skeleton.boneMatrices;
+          for (let i = 0; i < pos.count; i++) {
+            v.fromBufferAttribute(pos, i).applyMatrix4(o.bindMatrix); acc.set(0, 0, 0);
+            for (let k = 0; k < 4; k++) {
+              const w = comp(sw, i, k); if (!w) continue; // r128 has no getComponent
+              m.fromArray(bm, comp(si, i, k) * 16);
+              acc.add(t.copy(v).applyMatrix4(m).multiplyScalar(w));
+            }
+            acc.applyMatrix4(o.bindMatrixInverse).applyMatrix4(o.matrixWorld); cb(acc);
+          }
+        } else {
+          for (let i = 0; i < pos.count; i++) {acc.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); cb(acc)}
+        }
+      });
+    }
+    cv.addEventListener('dblclick', e => {
+      if (!model) return;
+      if (e.ctrlKey || e.shiftKey || e.metaKey) return; // Ctrl / Shift + click is multi-select: a fast double click there must not move the camera
+      const b = cv.getBoundingClientRect(), mx = e.clientX - b.left, my = e.clientY - b.top;
+      cam.updateMatrixWorld();
+      const v = new THREE.Vector3(), box = new THREE.Box3(); let best = null, bz = Infinity;
+      forEachWorldVertex(p => {
+        box.expandByPoint(p);
+        v.copy(p).project(cam);
+        if (v.z < -1 || v.z > 1) return;
+        const sx = (v.x * .5 + .5) * b.width, sy = (-v.y * .5 + .5) * b.height;
+        if (Math.hypot(sx - mx, sy - my) <= 14 && v.z < bz) {bz = v.z; best = p.clone()}
+      });
+      camAnim = null;
+      const off = cam.position.clone().sub(ctl.target), d0 = off.length() || 1;
+      let to, d1 = d0, z1 = oCam.zoom;
+      if (best) {to = best}
+      else {
+        if (box.isEmpty()) return;
+        to = box.getCenter(new THREE.Vector3());
+        const sz = box.getSize(new THREE.Vector3()), k = Math.max(sz.x, sz.y, sz.z) || 1;
+        d1 = k * 2.2; z1 = oH / (1.6 * k);
+      }
+      focusAnim = {t0: performance.now(), dur: 450, from: ctl.target.clone(), to: to, dir: off.normalize(), d0: d0, d1: d1, z0: oCam.zoom, z1: z1};
+    });
+
+    // The same fly-to as a double click on empty space; also done once automatically after the first model of a session has loaded
+    let autoFocused = false;
+    function focusModel() {
+      if (!model) return;
+      const box = new THREE.Box3(); forEachWorldVertex(p => box.expandByPoint(p)); if (box.isEmpty()) return;
+      const sz = box.getSize(new THREE.Vector3()), k = Math.max(sz.x, sz.y, sz.z) || 1;
+      camAnim = null; cam.updateMatrixWorld();
+      const off = cam.position.clone().sub(ctl.target), d0 = off.length() || 1;
+      focusAnim = {t0: performance.now(), dur: 450, from: ctl.target.clone(), to: box.getCenter(new THREE.Vector3()), dir: off.normalize(), d0: d0, d1: k * 2.2, z0: oCam.zoom, z1: oH / (1.6 * k)};
+    }
+
+    // ---- Focus on parts (double click in the list, F key): the camera flies to the bounding box of the part(s), keeping the viewing direction ----
+    function partBox(p, box) {
+      const o = p.mesh, g = o.geometry, pos = g.attributes.position; if (!pos) return;
+      const ps = o.userData.parts, si = ps.indexOf(p), idx = g.index, v = new THREE.Vector3();
+      o.updateWorldMatrix(true, false);
+      const add = i => {v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); box.expandByPoint(v)};
+      if (ps.length > 1 && g.groups.length) g.groups.filter(x => x.materialIndex === si).forEach(gr => {for (let k = gr.start; k < gr.start + gr.count; k++) add(idx ? idx.getX(k) : k)});
+      else for (let i = 0; i < pos.count; i++) add(i);
+    }
+    function focusParts(list) {
+      const box = new THREE.Box3(); list.forEach(p => partBox(p, box));
+      if (box.isEmpty()) return;
+      const to = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3()), k = Math.max(sz.x, sz.y, sz.z, 1e-6);
+      camAnim = null;
+      const off = cam.position.clone().sub(ctl.target), d0 = off.length() || 1, d1 = k * 2.2;
+      if (pCam.near > d1 / 50) {pCam.near = d1 / 50; pCam.updateProjectionMatrix()} // a tiny part must not be cut by the near plane
+      focusAnim = {t0: performance.now(), dur: 450, from: ctl.target.clone(), to: to, dir: off.normalize(), d0: d0, d1: d1, z0: oCam.zoom, z1: oH / (1.6 * k)};
+    }
+
+    // ---- Light settings ----
+    // Defaults: brightness / fill 100% (= HEMI_K / DIR_K above), direction horizontal 37°, elevation 45°, 6500K (neutral white)
+    const LDEF = {br: 1, fill: 1, az: 37, el: 45, k: 6500, follow: false, sh: false};
+    let L = Object.assign({}, LDEF);
+    try {const sv = JSON.parse(localStorage.getItem('pp3d.light') || 'null'); if (sv && typeof sv === 'object') Object.keys(LDEF).forEach(k => {if (typeof sv[k] === typeof LDEF[k]) L[k] = sv[k]})} catch (e) { }
+    const lDir = new THREE.Vector3();
+    // Color temperature (Kelvin) -> RGB 0..255 (Tanner Helland's approximation; ~6500K is neutral white)
+    function kelvinRGB(k) {
+      const t = k / 100, cl = v => Math.max(0, Math.min(255, v));
+      const r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
+      const g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+      const b = t >= 66 ? 255 : (t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307);
+      return [cl(r), cl(g), cl(b)];
+    }
+    (() => { // slider track = the actual color scale
+      const st = []; for (let k = 2000; k <= 10000; k += 500) {const c = kelvinRGB(k).map(Math.round); st.push('rgb(' + c + ') ' + ((k - 2000) / 80) + '%')}
+      $('lk').style.background = 'linear-gradient(to right,' + st.join(',') + ')';
+    })();
+    function updateLightDir() {
+      const a = L.az * Math.PI / 180, e = L.el * Math.PI / 180;
+      lDir.set(Math.sin(a) * Math.cos(e), Math.sin(e), Math.cos(a) * Math.cos(e)); // +Z = toward the camera, the default camera sits at +Z
+      if (L.follow) {cam.updateMatrixWorld(); lDir.applyQuaternion(cam.quaternion)} // direction defined in camera space -> world direction
+      dl.position.copy(shC).addScaledVector(lDir, shR * 3.5); dl.target.position.copy(shC); // the light looks at the model's center
+    }
+    // ---- Shadows (off by default, remembered) ----
+    // Orthographic shadow camera fitted to the model. The floor surface receives the shadow; when the floor is hidden, a transparent
+    // ground plane (same size as the floor) shows only the shadow.
+    r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+    dl.shadow.mapSize.set(2048, 2048); dl.shadow.bias = -0.0004;
+    scene.add(dl.target);
+    const shGround = new THREE.Mesh(new THREE.PlaneGeometry(10, 10).rotateX(-Math.PI / 2), new THREE.ShadowMaterial({opacity: 0.4, depthWrite: false}));
+    shGround.receiveShadow = true; shGround.visible = false; scene.add(shGround);
+    const shC = new THREE.Vector3(); let shR = 1;
+    function shadowFit(c, R, floorY) {
+      shC.copy(c); shR = R || 1;
+      const sc = dl.shadow.camera; sc.left = sc.bottom = -shR * 1.25; sc.right = sc.top = shR * 1.25; sc.near = 0.01; sc.far = shR * 7; sc.updateProjectionMatrix();
+      dl.shadow.normalBias = shR * 0.004;
+      shGround.scale.copy(solidFloor.scale); shGround.position.y = floorY - shR * 0.0005;
+      updateLightDir();
+    }
+    // The default shadow pass ignores the texture's alpha, so leaf cards would cast full rectangles.
+    // Meshes whose material is cut-out / transparent get a depth material that discards the transparent texels.
+    function depthFor(m, skin) {
+      const k = skin ? 'depthS' : 'depthN';
+      if (!m.userData[k]) m.userData[k] = new THREE.MeshDepthMaterial({depthPacking: THREE.RGBADepthPacking, map: m.map, alphaMap: m.alphaMap, alphaTest: m.alphaTest > 0 ? m.alphaTest : 0.5, skinning: !!skin, side: THREE.DoubleSide});
+      return m.userData[k];
+    }
+    // ---- Floor: grid or solid surface, size x1..x5, color; remembered ----
+    const FDEF = {size: 1, mode: 'grid', col: '#5a5a5a', inv: false}; // inv: grid lines in Smart inverse mode
+    let F = Object.assign({}, FDEF);
+    try {
+      const sv = JSON.parse(localStorage.getItem('pp3d.floor') || 'null'); if (sv) {
+        if (Number.isInteger(sv.size) && sv.size >= 1) F.size = Math.min(5, sv.size);
+        if (sv.mode === 'grid' || sv.mode === 'solid') F.mode = sv.mode;
+        if (/^#[0-9a-f]{6}$/i.test(sv.col || '')) F.col = sv.col;
+        if (typeof sv.inv === 'boolean') F.inv = sv.inv
+      }
+    } catch (e) { }
+    let floorOn = true, floorY = 0; // floorOn = the grid button in the right panel
+    const solidFloor = new THREE.Mesh(new THREE.PlaneGeometry(10, 10).rotateX(-Math.PI / 2),
+      new THREE.MeshStandardMaterial({color: lin(F.col), roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1}));
+    solidFloor.receiveShadow = true; solidFloor.visible = false; scene.add(solidFloor);
+    // ---- Grid colours: two modes ----
+    //  Standard: the same dark grey lines on every floor (GRID_STD).
+    //  Smart inverse: the lines take the inverse of the floor colour, but their lightness is kept in the mid tones
+    //  (GRID_L_MIN..GRID_L_MAX), so a black floor does not get glaring white lines and a white floor no pitch-black ones.
+    //  Near mid-grey the inverse is almost the floor colour itself: then the lines move to the end of the range further from the floor.
+    // In both modes the main (centre) lines are the same colour pushed further away from the floor, so they stand out the most
+    // (darker on a darker grid, lighter on a lighter one, also kept inside GRID_MAJOR_MIN..GRID_MAJOR_MAX).
+    const GRID_STD = '#444444';
+    const GRID_L_MIN = 0.32, GRID_L_MAX = 0.55;       // <- Smart inverse: lightness range of the lines (0 = black, 1 = white)
+    const GRID_MAJOR_MIN = 0.12, GRID_MAJOR_MAX = 0.65; // <- lightness range of the main lines
+    const GRID_MAJOR_STEP = 0.14;                     // <- how much further from the floor the main lines are
+    const GRID_MIN_CONTRAST = 1.8;                    // <- Smart inverse: lowest line / floor contrast before moving the lines
+    const luma = c => {const f = v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b)};
+    const contrast = (a, b) => {const x = luma(a), y = luma(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)};
+    const hsl = c => c.getHSL({});
+    const withL = (c, l) => {const h = hsl(c); return new THREE.Color().setHSL(h.h, h.s, l)};
+    function smartInverse(floor) { // colours here are sRGB (as picked), not linear
+      const inv = new THREE.Color(1 - floor.r, 1 - floor.g, 1 - floor.b);
+      let c = withL(inv, Math.min(GRID_L_MAX, Math.max(GRID_L_MIN, hsl(inv).l)));
+      if (contrast(c, floor) < GRID_MIN_CONTRAST) { // too close to the floor: the end of the range further from it
+        const fl = hsl(floor).l;
+        c = withL(inv, Math.abs(GRID_L_MIN - fl) > Math.abs(GRID_L_MAX - fl) ? GRID_L_MIN : GRID_L_MAX);
+      }
+      return c;
+    }
+    function applyGridColors() {
+      const floor = new THREE.Color(F.col), g = F.inv ? smartInverse(floor) : new THREE.Color(GRID_STD);
+      const gl = hsl(g).l, darker = luma(g) <= luma(floor);
+      const major = withL(g, Math.min(GRID_MAJOR_MAX, Math.max(GRID_MAJOR_MIN, gl + (darker ? -GRID_MAJOR_STEP : GRID_MAJOR_STEP))));
+      gUni.uMinor.value.copy(g).convertSRGBToLinear(); gUni.uMajor.value.copy(major).convertSRGBToLinear();
+      [].forEach.call($('gridseg').children, b => {b.classList.toggle('on', (b.dataset.g === 'inv') === F.inv); b.disabled = !floorOn});
+      $('gmrow').hidden = F.mode !== 'grid'; // a plain floor has no grid lines
+    }
+    function applyFloor() {
+      const sc = sceneK / 5 * F.size;
+      const gn = F.size > 1 ? GMAX : 1; // built once; size changes only move the clip boundary
+      if (gr.userData.n !== gn) {buildGrid(gn); gr.userData.n = gn}
+      gUni.uB.value = sceneK * F.size * 1.0005;
+      gUni.uR.value.set(sceneK, sceneK * F.size, GF_EDGE, GF_CURVE); // x1 area stays full
+      gr.scale.setScalar(sceneK / 5); solidFloor.scale.setScalar(sc); shGround.scale.setScalar(sc);
+      gr.position.y = floorY; solidFloor.position.y = floorY - sceneK * 0.002; shGround.position.y = floorY - shR * 0.0005; // surface just under the grid lines
+      gr.visible = floorOn && F.mode === 'grid'; solidFloor.visible = floorOn; // grid = lines on the coloured surface
+      solidFloor.material.color.copy(lin(F.col));
+      applyShadow();
+      [].forEach.call($('floorseg').children, b => b.classList.toggle('on', b.dataset.m === F.mode));
+      $('fsize').value = F.size; $('v_fs').textContent = '×' + F.size; $('fcol').value = F.col;
+      syncFloorPop(); applyGridColors();
+    }
+    function saveFloor() {try {localStorage.setItem('pp3d.floor', JSON.stringify(F))} catch (e) { } }
+    [].forEach.call($('floorseg').children, b => {b.onclick = () => {F.mode = b.dataset.m; saveFloor(); applyFloor()}});
+    function markStepSeg() {[].forEach.call($('stepseg').children, b => b.classList.toggle('on', b.dataset.m === stepDetail))}
+    markStepSeg();
+    [].forEach.call($('stepseg').children, b => {
+      b.onclick = () => {
+        if (b.dataset.m === stepDetail) return;
+        stepDetail = b.dataset.m; try {localStorage.setItem('pp3d.stepDetail', stepDetail)} catch (e) { } markStepSeg();
+        if (model && (modelExt === 'step' || modelExt === 'stp') && stepFid) load({stepRemesh: true, byteLength: stepBytes}, modelName, {keepView: true}); // triangulate again with the new tolerance
+      }
+    });
+    $('fsize').oninput = e => {F.size = +e.target.value; saveFloor(); applyFloor()};
+    $('fcol').oninput = e => {F.col = e.target.value; saveFloor(); applyFloor()};
+    [].forEach.call($('gridseg').children, b => {b.onclick = () => {F.inv = b.dataset.g === 'inv'; saveFloor(); applyGridColors()}});
+    // Camera field of view (perspective only, remembered) + camera / floor popovers
+    function setFov(v, save) {
+      v = Math.max(20, Math.min(90, Math.round(v)));
+      const keep = !ortho && model; // keep the framing: dolly so the target stays the same size
+      if (keep) {const d = pCam.position.distanceTo(ctl.target) * Math.tan(pCam.fov * Math.PI / 360) / Math.tan(v * Math.PI / 360); const dir = pCam.position.clone().sub(ctl.target).normalize(); pCam.position.copy(ctl.target).addScaledVector(dir, d)}
+      pCam.fov = v; pCam.updateProjectionMatrix(); if (keep) ctl.update();
+      $('fov').value = v; $('v_fov').textContent = v + '°';
+      if (save) try {localStorage.setItem('pp3d.fov', String(v))} catch (e) { }
+    }
+    $('fov').oninput = e => setFov(+e.target.value, true);
+    {let f = 40; try {f = +localStorage.getItem('pp3d.fov') || 40} catch (e) { } pCam.fov = Math.max(20, Math.min(90, f)); pCam.updateProjectionMatrix(); $('fov').value = pCam.fov; $('v_fov').textContent = pCam.fov + '°'; syncFov()}
+    // Buttons with settings carry a small corner triangle: click the corner (or right-click) to open the settings popover
+    const POPS = {ortho: 'cop', grid: 'fop', solid: 'sop', holo: 'hop'};
+    function placePop(el, btn) { // under the button, right edges aligned, kept inside the window
+      el.style.top = ($('rp').offsetHeight + 6) + 'px';
+      const rb = btn.getBoundingClientRect(), rr = $('rp').getBoundingClientRect();
+      el.style.left = (Math.max(8, rb.right - el.offsetWidth) - rr.left) + 'px';
+    }
+    function closePops(except) {for (const b in POPS) if (POPS[b] !== except) {$(POPS[b]).hidden = true; $(b).classList.remove('pop')} }
+    function togglePop(b) {
+      const p = $(POPS[b]), open = p.hidden; closePops(POPS[b]);
+      if (open) {closeX(); closeL()}
+      p.hidden = !open; $(b).classList.toggle('pop', open); if (open) placePop(p, $(b));
+    }
+    for (const b in POPS) {
+      $(b).querySelector('.cz').addEventListener('click', e => {e.stopPropagation(); e.preventDefault(); togglePop(b)});
+      $(b).addEventListener('contextmenu', e => {e.preventDefault(); togglePop(b)});
+    }
+    document.addEventListener('pointerdown', e => {for (const b in POPS) {const id = POPS[b]; if (!$(id).hidden && !e.target.closest('#' + id) && !e.target.closest('#' + b + ' .cz')) closePops()} });
+    document.addEventListener('keydown', e => {if (e.key === 'Escape') closePops()});
+    function syncFloorPop() {$('fop').classList.toggle('off', !floorOn);['fsize', 'fcol'].forEach(i => $(i).disabled = !floorOn);[].forEach.call($('floorseg').children, b => b.disabled = !floorOn)}
+    // Back-face rendering (off by default, remembered): double-sided materials, no culling
+    let BF = false; try {BF = localStorage.getItem('pp3d.bf') === '1'} catch (e) { }
+    function applyBF() {
+      const set = m => {if (!m) return; if (m.userData.side0 === undefined) m.userData.side0 = m.side; const sd = BF ? THREE.DoubleSide : m.userData.side0; if (m.side !== sd) {m.side = sd; m.needsUpdate = true} };
+      if (model) model.traverse(o => {if (o.isMesh && !o.userData.isWire) [].concat(origOf(o)).forEach(set)});
+      [solidMat, solidMatSkin].concat(SOLID_ALPHA, partList.map(p => p.mat)).forEach(set);
+      $('bfb').classList.toggle('on', BF);
+    }
+    applyBF();
+    $('bfb').onclick = () => {BF = !BF; try {localStorage.setItem('pp3d.bf', BF ? '1' : '0')} catch (e) { } applyBF()};
+    function applyShadow() {
+      const on = !!L.sh && !!model;
+      dl.castShadow = on;
+      if (model) model.traverse(o => {
+        if (o.isMesh && !o.userData.isWire) {
+          o.castShadow = on && !(o.material && !Array.isArray(o.material) && o.material.userData.glass); o.receiveShadow = on;
+          const m = origOf(o);
+          o.customDepthMaterial = (on && !Array.isArray(m) && m.map && (m.alphaTest > 0 || m.transparent || m.userData.alphaMode)) ? depthFor(m, o.isSkinnedMesh) : undefined;
+        }
+      });
+      shGround.visible = on && !floorOn; // floor on: the floor surface receives the shadow itself | floor off: an invisible plane shows only the shadow
+    }
+    function applyLight(save) {
+      hemi.intensity = HEMI_K * L.br * L.fill; dl.intensity = DIR_K * L.br; {const c = kelvinRGB(L.k); dl.color.setRGB(c[0] / 255, c[1] / 255, c[2] / 255).convertSRGBToLinear()}
+      updateLightDir(); applyShadow();
+      $('br').value = L.br; $('fill').value = L.fill; $('v_fill').textContent = Math.round(L.fill * 100) + '%'; $('az').value = L.az; $('el').value = L.el; $('lk').value = L.k; $('v_lk').textContent = Math.round(L.k) + 'K'; $('lf').checked = L.follow; $('lsh').checked = !!L.sh;
+      $('v_br').textContent = Math.round(L.br * 100) + '%'; $('v_az').textContent = Math.round(L.az) + '°'; $('v_el').textContent = Math.round(L.el) + '°';
+      if (save) {try {localStorage.setItem('pp3d.light', JSON.stringify(L))} catch (e) { } }
+    }
+    $('br').oninput = e => {L.br = +e.target.value; applyLight(true)};
+    $('fill').oninput = e => {L.fill = +e.target.value; applyLight(true)};
+    $('az').oninput = e => {L.az = +e.target.value; applyLight(true)};
+    $('el').oninput = e => {L.el = +e.target.value; applyLight(true)};
+    $('lk').oninput = e => {L.k = +e.target.value; applyLight(true)};
+    $('lf').onchange = e => {L.follow = e.target.checked; applyLight(true)};
+    $('lsh').onchange = e => {L.sh = e.target.checked; applyLight(true)};
+    $('lr').onclick = () => {L = Object.assign({}, LDEF, {sh: L.sh}); applyLight(true)}; // Reset keeps the shadow choice
+    function closeL() {$('lt').hidden = true; $('lightb').classList.remove('on')}
+    $('lightb').onclick = e => {e.stopPropagation(); closePops(); const h = $('lt').hidden; $('lt').hidden = !h; $('lightb').classList.toggle('on', h); if (h) {closeX(); const r = $('lightb').getBoundingClientRect(); $('lt').style.top = (r.bottom + 8) + 'px'; $('lt').style.right = 'auto'; $('lt').style.left = Math.max(8, r.right - $('lt').offsetWidth) + 'px'} };
+    // click / press outside the light panel closes it (same as the settings panel)
+    document.addEventListener('pointerdown', e => {if (!$('lt').hidden && !e.target.closest('#lt') && !e.target.closest('#lightb')) closeL()});
+    applyLight(false);
+
+    // ---- Settings (gear): Z up, back faces, FPS counter, CAD detail (STEP only), language ----
+    function placeX() { // below the gear, right edge aligned with it; opens upward if it does not fit below
+      const r = $('gearb').getBoundingClientRect(), x = $('xp');
+      x.style.right = (innerWidth - r.right) + 'px'; x.style.top = (r.bottom + 8) + 'px';
+      if (r.bottom + 8 + x.offsetHeight > innerHeight - 8) x.style.top = Math.max(8, r.top - 8 - x.offsetHeight) + 'px';
+    }
+    function closeX() {$('xp').hidden = true; $('gearb').classList.remove('on')}
+    $('gearb').onclick = e => {e.stopPropagation(); closePops(); const open = $('xp').hidden; $('xp').hidden = !open; if (open) {placeX(); $('lt').hidden = true; $('lightb').classList.remove('on')} $('gearb').classList.toggle('on', open)};
+    document.addEventListener('pointerdown', e => {if (!$('xp').hidden && !e.target.closest('#xp') && !e.target.closest('#gearb')) closeX()});
+    addEventListener('resize', () => {if (!$('xp').hidden) placeX()});
+    [].forEach.call($('langseg').children, b => {b.onclick = () => {lang = b.dataset.l; applyLang(true)}});
+    // restore the saved view state
+    try {
+      const sv = JSON.parse(localStorage.getItem('pp3d.view') || 'null');
+      if (sv && typeof sv === 'object') {
+        if (sv.grid === false) {floorOn = false; $('grid').classList.remove('on'); applyFloor()}
+        wire = sv.wire === true; syncWireUi(); modeBtns();
+        skel = sv.skel === true; $('skel').classList.toggle('on', skel);
+        if (sv.ortho === true) setOrtho(true);
+      }
+    } catch (e) { }
+    applyFloor(); applyLang(false);
+
+    const clock = new THREE.Clock();
+    let fpsN = 0, fpsT = performance.now(), fpsOn = true;
+    try {fpsOn = localStorage.getItem('pp3d.fps') !== '0'} catch (e) { }
+    function applyFps() {$('fps').hidden = !fpsOn; $('fpsb').classList.toggle('on', fpsOn); fpsN = 0; fpsT = performance.now()}
+    $('fpsb').onclick = () => {fpsOn = !fpsOn; try {localStorage.setItem('pp3d.fps', fpsOn ? '1' : '0')} catch (e) { } applyFps()};
+    applyFps();
+    // ---- Outline (Blender style) ----
+    // The hovered (list) and the selected parts get an orange silhouette that is also drawn where other meshes are in front of them.
+    // How: the highlighted parts alone are drawn into a mask texture (red = selected, green = hovered); a full-screen pass then draws a ring around
+    // the mask pixels on top of the finished frame, so nothing in the scene can hide it.
+    const outScene = new THREE.Scene(), outCache = new WeakMap(), outNone = new THREE.MeshBasicMaterial({visible: false});
+    const outMk = (col, skin) => new THREE.MeshBasicMaterial({color: col, side: THREE.DoubleSide, skinning: skin, toneMapped: false});
+    const outMat = [null, outMk(0xff0000, false), outMk(0x00ff00, false)], outMatSkin = [null, outMk(0xff0000, true), outMk(0x00ff00, true)]; // [none, selected, hovered]
+    const OUT_PX = 3.2, OUT_HOVER_ALPHA = 0.8; // ring width in CSS pixels | the hover outline is a little softer than the selection outline
+    const outRT = new THREE.WebGLRenderTarget(2, 2, {minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true});
+    const outQuad = new THREE.Scene(), outQCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const outSh = new THREE.ShaderMaterial({
+      uniforms: {tMask: {value: outRT.texture}, texel: {value: new THREE.Vector2()}, rad: {value: 3}, col: {value: new THREE.Color('#e07b39')}, hovA: {value: OUT_HOVER_ALPHA}},
+      vertexShader: 'varying vec2 vUv; void main(){vUv=uv; gl_Position=vec4(position.xy,0.,1.);}',
+      fragmentShader: `uniform sampler2D tMask; uniform vec2 texel; uniform float rad, hovA; uniform vec3 col; varying vec2 vUv;
+        void main(){
+          vec4 c = texture2D(tMask, vUv);
+          if (c.r + c.g > 0.5) discard;            // inside a highlighted part: nothing is drawn, the part itself is visible
+          float s = 0., h = 0.;
+          for (int i = 0; i < 16; i++) {
+            float a = 0.3926991 * float(i);
+            vec2 d = vec2(cos(a), sin(a)) * texel;
+            vec4 t1 = texture2D(tMask, vUv + d * rad * 0.5), t2 = texture2D(tMask, vUv + d * rad);
+            s += step(0.5, t1.r) + step(0.5, t2.r); h += step(0.5, t1.g) + step(0.5, t2.g);
+          }
+          float ks = clamp(s / 5., 0., 1.), kh = clamp(h / 5., 0., 1.) * hovA;
+          float k = max(ks, kh);
+          if (k <= 0.) discard;
+          gl_FragColor = vec4(col, k);              // written as is: the colour is already in screen (sRGB) values
+        }`,
+      transparent: true, depthTest: false, depthWrite: false, toneMapped: false
+    });
+    outQuad.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), outSh));
+    const outSz = new THREE.Vector2(), outClr = new THREE.Color();
+    const shownDeep = o => {for (; o; o = o.parent) if (!o.visible) return false; return true};
+    function drawOutline() {
+      if (!model || !partList.length) return;
+      const roles = new Map(); // mesh -> role per material slot (0 none, 1 selected, 2 hovered)
+      partList.forEach(p => {
+        const k = p.hidden ? 0 : p.sel ? 1 : p === hoverP ? 2 : 0;
+        if (!k || !shownDeep(p.mesh)) return;
+        let a = roles.get(p.mesh); if (!a) {a = (p.mesh.userData.parts || []).map(() => 0); roles.set(p.mesh, a)}
+        a[Math.max(0, p.mesh.userData.parts.indexOf(p))] = k;
+      });
+      if (!roles.size) return;
+      while (outScene.children.length) outScene.remove(outScene.children[0]);
+      roles.forEach((a, o) => {
+        let mm = outCache.get(o);
+        if (!mm || mm.geometry !== o.geometry) {
+          mm = o.isSkinnedMesh ? new THREE.SkinnedMesh(o.geometry, outNone) : new THREE.Mesh(o.geometry, outNone);
+          mm.frustumCulled = false; mm.matrixAutoUpdate = false;
+          if (o.isSkinnedMesh) mm.bind(o.skeleton, o.bindMatrix);
+          outCache.set(o, mm);
+        }
+        const tab = o.isSkinnedMesh ? outMatSkin : outMat, slot = k => k ? tab[k] : outNone;
+        mm.material = Array.isArray(origOf(o)) ? a.map(slot) : slot(a[0]);
+        mm.matrix.copy(o.matrixWorld); // the scene updates matrixWorld from this (it has no parent)
+        outScene.add(mm);
+      });
+      r.getDrawingBufferSize(outSz);
+      if (outRT.width !== outSz.x || outRT.height !== outSz.y) outRT.setSize(outSz.x, outSz.y);
+      outSh.uniforms.texel.value.set(1 / outSz.x, 1 / outSz.y);
+      outSh.uniforms.rad.value = OUT_PX * r.getPixelRatio();
+      const ac = r.autoClear, ca = r.getClearAlpha(); r.getClearColor(outClr);
+      r.setRenderTarget(outRT); r.setClearColor(0x000000, 0); r.clear(); r.render(outScene, cam);
+      r.setRenderTarget(null); r.setClearColor(outClr, ca);
+      r.autoClear = false; r.render(outQuad, outQCam); r.autoClear = ac;
+    }
+    (function loop() {
+      requestAnimationFrame(loop); const d = clock.getDelta();
+      if (fpsOn) {fpsN++; const t = performance.now(); if (t - fpsT >= 500) {$('fps').textContent = Math.round(fpsN * 1000 / (t - fpsT)) + ' FPS'; fpsN = 0; fpsT = t} } gridFade();
+      if (mixer) {mixer.update(playing ? d : 0); if (cur && playing) updateUI()}
+      {const o = cam.position.clone().sub(ctl.target), hl = Math.hypot(o.x, o.z); if (hl > o.length() * 1e-4) {lastH.x = o.x / hl; lastH.z = o.z / hl} }
+      if (camAnim) {
+        const p = Math.min(1, (performance.now() - camAnim.t0) / camAnim.dur);
+        const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+        const ph = camAnim.ph0 + camAnim.dph * e, th = camAnim.th0 + camAnim.dth * e;
+        const v = p >= 1 ? camAnim.to.clone() : new THREE.Vector3(Math.sin(ph) * Math.sin(th), Math.cos(ph), Math.sin(ph) * Math.cos(th));
+        cam.position.copy(ctl.target).addScaledVector(v, camAnim.dist);
+        if (p >= 1) camAnim = null;
+      }
+      if (focusAnim) {
+        const f = focusAnim, p = Math.min(1, (performance.now() - f.t0) / f.dur), e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+        ctl.target.lerpVectors(f.from, f.to, e);
+        cam.position.copy(ctl.target).addScaledVector(f.dir, f.d0 + (f.d1 - f.d0) * e);
+        if (ortho) {oCam.zoom = f.z0 + (f.z1 - f.z0) * e; oCam.updateProjectionMatrix()}
+        if (p >= 1) focusAnim = null;
+      }
+      updateWireFade();
+      updateSkelPoints();
+      ctl.update(); if (L.follow) updateLightDir(); r.render(scene, cam); drawOutline(); drawGizmo()
+    })();
+  </script>
+</body>
+
+</html>
