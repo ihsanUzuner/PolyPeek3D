@@ -3,6 +3,9 @@
 
 <head>
   <meta charset="utf-8">
+  <!-- Nothing leaves this PC: a model file may point to textures on the internet (https://...), such requests are blocked.
+       Allowed: the app's own files, the opened model's folder, and data made in memory (blob: / data:). WebAssembly is needed by the Draco, meshopt and STEP readers. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' https://polypeek3dmodel.example https://*.polypeek3dmodel.example blob: data:; media-src 'self' https://polypeek3dmodel.example https://*.polypeek3dmodel.example blob: data:; connect-src 'self' https://polypeek3dmodel.example https://*.polypeek3dmodel.example blob: data:">
   <meta name="darkreader-lock"> <!-- keep the Dark Reader extension away from this page -->
   <meta name="color-scheme" content="dark">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1660,6 +1663,16 @@
     const oCam = new THREE.OrthographicCamera(-1, 1, 1, -1, -1000, 1000);
     let cam = pCam, ortho = false, oH = 1, sceneK = 1; // cam = active camera
     const ctl = new THREE.OrbitControls(cam, cv); ctl.target.set(0, 1, 0);
+    // ---- Draw on demand ----
+    // Nothing is drawn while nothing changes (an idle window must not keep the GPU busy). redraw() asks for the next frames;
+    // the loop at the bottom also keeps drawing while an animation plays or the camera is flying.
+    // Any user input asks for a redraw; code that changes the picture without one (hover, loading, textures arriving) calls redraw() itself.
+    let wake = 2; // frames still to draw
+    function redraw() {wake = 2}
+    ctl.addEventListener('change', redraw);
+    ['pointerdown', 'pointerup', 'keydown', 'keyup', 'input', 'change', 'click', 'dblclick', 'contextmenu', 'wheel'].forEach(t => addEventListener(t, redraw, {capture: true, passive: true}));
+    document.addEventListener('visibilitychange', redraw);
+    THREE.DefaultLoadingManager.onLoad = THREE.DefaultLoadingManager.onProgress = redraw;
     // Base light levels at Brightness 100% / Fill 100% (tune here: a bigger number = a brighter scene)
     const HEMI_K = 0.8; // fill (sky/ground) light
     const DIR_K = 1.2;  // main directional light
@@ -1717,8 +1730,10 @@
     let model = null, mixer = null, actions = [], cur = null, playing = true, wire = false, solid = false, speed = 1, loopMode = 'repeat', skel = false, skelObjs = [], skelPts = null, skelBones = [], animNames = [], animSrc = [], curIdx = 0, infoFn = null;
     const $ = id => document.getElementById(id);
     function orthoFrustum() {const a = innerWidth / innerHeight; oCam.left = -oH * a / 2; oCam.right = oH * a / 2; oCam.top = oH / 2; oCam.bottom = -oH / 2; oCam.updateProjectionMatrix()}
-    function resize() {r.setSize(innerWidth, innerHeight, false); pCam.aspect = innerWidth / innerHeight; pCam.updateProjectionMatrix(); orthoFrustum()}
-    // Perspective <-> orthographic switch: the on-screen size stays the same
+    function resize() {
+      if (r.getPixelRatio() !== devicePixelRatio) r.setPixelRatio(devicePixelRatio); // the window moved to a screen with another scaling (100% <-> 150%...)
+      r.setSize(innerWidth, innerHeight, false); pCam.aspect = innerWidth / innerHeight; pCam.updateProjectionMatrix(); orthoFrustum(); redraw()
+    }    // Perspective <-> orthographic switch: the on-screen size stays the same
     function setOrtho(on) {
       if (on === ortho) return;
       const half = Math.tan(pCam.fov * Math.PI / 360);
@@ -1757,6 +1772,8 @@
         errBig: 'Bu model bellek sınırını aşıyor, bu yüzden açılamadı. Dosya bu uygulama için çok büyük olabilir.',
         errEmpty: 'Dosya okundu ama içinde çizilebilir yüzey ya da nokta bulunamadı. Dosya boş, bozuk ya da çok büyük olabilir.',
         errGen: 'Dosya açılırken bir hata oluştu.',
+        errGpu: 'Ekran kartı bağlantısı kesildi (sürücü yenilendi ya da bilgisayar uykudan döndü). Görüntü kendiliğinden geri gelmezse modeli yeniden aç.',
+        errKtx: 'Bu modelin dokuları KTX2 (Basis) biçiminde sıkıştırılmış. PolyPeek3D bu doku biçimini desteklemiyor.',
         errCrash: (n, oom) => (n ? '"' + n + '" açılırken ' : 'Görüntüleyici ') + (oom ? 'bellek yetmedi ve görüntüleyici durdu. Dosya bu uygulama için çok büyük.' : 'görüntüleyici beklenmedik şekilde durdu.') + ' Uygulama yeniden başlatıldı; başka bir dosya açabilirsin.',
         animCnt: n => n + ' animasyon', boneCnt: n => fmtN(n) + ' kemik'
       },
@@ -1777,6 +1794,8 @@
         errBig: 'This model exceeds the memory limit, so it could not be opened. The file may be too large for this app.',
         errEmpty: 'The file was read but it contains no drawable surfaces or points. It may be empty, damaged or too large.',
         errGen: 'An error occurred while opening the file.',
+        errGpu: 'The connection to the graphics card was lost (driver update, or the PC woke from sleep). If the picture does not come back by itself, open the model again.',
+        errKtx: 'The textures of this model are compressed as KTX2 (Basis). PolyPeek3D does not support this texture format.',
         errCrash: (n, oom) => (n ? 'While opening "' + n + '", ' : 'The viewer ') + (oom ? 'it ran out of memory and the viewer stopped. The file is too large for this app.' : 'the viewer stopped unexpectedly.') + ' The viewer was restarted; you can open another file.',
         animCnt: n => n + (n === 1 ? ' animation' : ' animations'), boneCnt: n => fmtN(n) + (n === 1 ? ' bone' : ' bones')
       }
@@ -1817,12 +1836,18 @@
     function heapStr() {try {const m = performance.memory; return m ? 'JS heap ' + Math.round(m.usedJSHeapSize / 1048576) + ' / ' + Math.round(m.jsHeapSizeLimit / 1048576) + ' MB' : ''} catch (e) {return ''} }
     addEventListener('error', e => plog('ERROR', 'JS: ' + e.message + ' @' + String(e.filename || '').split('/').pop() + ':' + e.lineno));
     addEventListener('unhandledrejection', e => plog('ERROR', 'Promise: ' + errText(e.reason) + errStack(e.reason)));
+    // a request stopped by the Content-Security-Policy above (usually a texture address on the internet): only the site is logged, not the full address
+    document.addEventListener('securitypolicyviolation', e => {let h = e.blockedURI || ''; try {h = new URL(h).origin} catch (x) { } plog('WARN', 'blocked request (' + e.violatedDirective + '): ' + h)});
     // out-of-memory style failures come from the engine as RangeError / allocation messages
-    const friendlyErr = e => (e instanceof RangeError || /allocation|string length|array length|typed array length|out of memory|\bOOM\b|enlarge memory/i.test(errText(e))) ? tx('errBig') : tx('errGen');
+    const friendlyErr = e => /KTX2/i.test(errText(e)) ? tx('errKtx') : (e instanceof RangeError || /allocation|string length|array length|typed array length|out of memory|\bOOM\b|enlarge memory/i.test(errText(e))) ? tx('errBig') : tx('errGen');
     function showErr(msg, detail) {
       $('errt').textContent = tx('errT'); $('errm').textContent = msg; $('errx').textContent = detail || '';
       $('errok').textContent = tx('errOk'); $('errlog').textContent = tx('errLog'); $('err').hidden = false;
     }
+    // The graphics card dropped the 3D context (driver reset, sleep...). three.js sets everything up again when it comes back; the picture
+    // then has to be drawn once more (nothing is drawn while nothing changes).
+    cv.addEventListener('webglcontextlost', () => {plog('WARN', 'WebGL context lost'); showErr(tx('errGpu'), '')});
+    cv.addEventListener('webglcontextrestored', () => {plog('INFO', 'WebGL context restored'); $('err').hidden = true; redraw()});
     $('errok').onclick = () => {$('err').hidden = true};
     $('errlog').onclick = () => plog('CMD', 'OPENLOG');
     // The host turns off the browser shortcuts (F5, Ctrl+P, Ctrl+F, Alt+Left...). The developer console stays available: F12 / Ctrl+Shift+I ask the host to open it.
@@ -1867,11 +1892,12 @@
     const MODEL_EXT = ['fbx', 'glb', 'gltf', 'obj', 'stl', 'ply', 'dae', '3ds', '3mf', 'amf', 'step', 'stp'];
     const ZUP_DEFAULT = ['stl', '3mf', 'amf', '3ds', 'step', 'stp']; // these formats usually come Z-up
     const extOf = n => (n.split('.').pop() || '').toLowerCase();
-    let ctx = {base: null, files: new Map()}; // base: URL of the model's folder (when opened by double-click) | files: files dropped together (name -> blob URL)
+    let ctx = {base: null, files: new Map()}; // base: URL of the model's folder (asked from the host for a dropped file) | files: files dropped together with the model (name -> blob URL)| files: files dropped together (name -> blob URL)
     let blobUrls = [], upZ = false, modelExt = '';
     let ZM = {}; try {ZM = JSON.parse(localStorage.getItem('pp3d.zup') || '{}') || {}} catch (e) {ZM = {}} // Z-up choice remembered per file format
     function mkManager() {
       const m = new THREE.LoadingManager();
+      m.onLoad = m.onProgress = m.onError = redraw; // a texture arrived (or failed) after the model was shown
       // resolve texture/bin/mtl paths: look up dropped files by name; for Windows paths (C:\...\a.png) take only the file name
       m.setURLModifier(u => {
         if (/^(blob:|data:)/i.test(u)) return u;
@@ -1885,6 +1911,54 @@
       });
       if (THREE.TGALoader) m.addHandler(/\.tga$/i, new THREE.TGALoader(m));
       return m;
+    }
+    // ---- Textures that cannot be found or read ----
+    // Model files often keep the texture paths of the machine they were made on (FBX: "/mnt/prod/.../textures/a.png"). When a picture
+    // is not where the file says, it is looked for by name next to the model and in its "textures" folder.
+    // A texture that still has no picture (missing, or a type the browser cannot read such as .exr / .psd) is taken off the material:
+    // an empty texture is black, and the whole model turned black with it.
+    const texLoading = new Set(); // textures whose picture is still on its way
+    {
+      const il0 = THREE.ImageLoader.prototype.load, tl0 = THREE.TextureLoader.prototype.load;
+      THREE.ImageLoader.prototype.load = function (url, onLoad, onProgress, onError) {
+        const self = this, first = this.manager.resolveURL((this.path !== undefined ? this.path : '') + url), alts = [];
+        if (ctx.base && !/^(blob:|data:)/i.test(first)) {
+          let name = first.split('#')[0].split('?')[0].split(/[\\/]/).pop(); try {name = decodeURIComponent(name)} catch (e) { }
+          ['', 'textures/'].forEach(d => {const u = ctx.base + d + encodeURIComponent(name); if (u !== first) alts.push(u)});
+        }
+        const next = err => {
+          if (!alts.length) {if (onError) onError(err); return }
+          const l = new THREE.ImageLoader(self.manager); l.setCrossOrigin(self.crossOrigin); il0.call(l, alts.shift(), onLoad, onProgress, next);
+        };
+        return il0.call(this, url, onLoad, onProgress, next);
+      };
+      THREE.TextureLoader.prototype.load = function (url, onLoad, onProgress, onError) {
+        const t = tl0.call(this, url, x => {texLoading.delete(t); if (onLoad) onLoad(x)}, onProgress, e => {
+          texLoading.delete(t); plog('WARN', 'texture not found or not readable: ' + String(url).split(/[\\/]/).pop());
+          dropEmptyTextures(); if (onError) onError(e);
+        });
+        texLoading.add(t); return t;
+      };
+    }
+    // The textures of FBX / OBJ / DAE... models are separate files that arrive after the model itself. The loading card stays until they
+    // are all there (found, or given up on), so they are put on the GPU behind it. Left alone, each one froze the picture when it arrived.
+    function texturesIn(tok) {
+      return new Promise(res => {
+        const t0 = performance.now();
+        (function chk() {
+          if (!texLoading.size || tok !== loadTok || performance.now() - t0 > 120000) return res();
+          showLoad('texLoad', null); setTimeout(chk, 50);
+        })();
+      });
+    }
+    function dropEmptyTextures() {
+      if (!model) return;
+      let n = 0;
+      model.traverse(o => {
+        if (!o.isMesh || o.userData.isWire) return;
+        [].concat(origOf(o)).forEach(m => {if (m) for (const k in m) {const t = m[k]; if (t && t.isTexture && t.image === undefined && !texLoading.has(t)) {m[k] = null; m.needsUpdate = true; n++} } });
+      });
+      if (n) {applySolid(); applyShadow()}
     }
     async function getRes(name) { // helper file (e.g. .mtl) -> ArrayBuffer | null
       const key = name.split(/[\\/]/).pop();
@@ -1919,7 +1993,7 @@
               const er = new Error('STEP reader failed: ' + (ev.message || 'worker error')); stepPend.forEach(p => p.no(er)); stepPend.clear();
             };
           }
-          stepW.postMessage(Object.assign({id}, msg));
+          stepW.postMessage(Object.assign({id}, msg), msg.buffer ? [msg.buffer] : []); // the file is handed over, not copied (a second copy of a big file is a lot of memory)
         } catch (e) {stepPend.delete(id); no(e)}
       });
     }
@@ -2041,7 +2115,9 @@
       });
       partList.forEach(p => mats.add(p.mat));
       for (let i = SOLID_ALPHA.length - 1; i >= 0; i--) if (mats.has(SOLID_ALPHA[i])) SOLID_ALPHA.splice(i, 1);
-      geos.forEach(g => g.dispose()); mats.forEach(m => m.dispose()); texs.forEach(t => t.dispose());
+      mats.forEach(m => {const vs = morphVar.get(m); if (vs) {vs.forEach(c => c.dispose()); morphVar.delete(m)} }); // their shape key copies
+      geos.forEach(g => g.dispose()); mats.forEach(m => m.dispose());
+      texs.forEach(t => {t.dispose(); try {if (t.image && t.image.close) t.image.close()} catch (e) { } }); // glTF pictures are ImageBitmaps: closed now, their memory is not left waiting for the garbage collector
       while (outScene.children.length) outScene.remove(outScene.children[0]); // outline copies of the old meshes
     }
     function fixNormals(root) { // meshes without normals (OBJ/PLY etc.) must not stay black under light
@@ -2148,20 +2224,20 @@
         console.error(e); plog('ERROR', 'load failed: ' + name + ': ' + errText(e) + errStack(e) + ' ' + heapStr());
         hideLoad(); if (!model) {$('drop').style.display = ''; document.title = 'PolyPeek3D'}
         showErr(friendlyErr(e), errText(e));
-      } finally {loadBusy--}
+      } finally {loadBusy--; redraw()}
     }
     async function loadModel(buf, name, opt) {
-      const tok = ++loadTok, ext = extOf(name), t0 = performance.now();
+      const tok = ++loadTok, ext = extOf(name), t0 = performance.now(), size = buf.byteLength; // size: a STEP file is handed over to its reader, buf is empty after that
       $('err').hidden = true;
-      plog('OPEN', name + '|' + buf.byteLength);
-      plog('INFO', 'parsing ' + name + ' (' + mbOf(buf.byteLength) + ') ' + heapStr());
+      plog('OPEN', name + '|' + size);
+      plog('INFO', 'parsing ' + name + ' (' + mbOf(size) + ') ' + heapStr());
       setInfo(() => tx('loading'));
-      if (buf.byteLength > BIG) ldOn = true;
+      if (size > BIG) ldOn = true;
       $('drop').style.display = 'none';
       showLoad('parsing', null, name); lateCard(); if (ldOn) await paint();
       let res;
       try {res = await parseModel(ext, buf)} catch (e) {
-        console.error(e); plog('ERROR', 'parse failed: ' + name + ' (' + mbOf(buf.byteLength) + '): ' + errText(e) + errStack(e) + ' ' + heapStr());
+        console.error(e); plog('ERROR', 'parse failed: ' + name + ' (' + mbOf(size) + '): ' + errText(e) + errStack(e) + ' ' + heapStr());
         hideLoad(); if (!model) {$('drop').style.display = ''; document.title = 'PolyPeek3D'} document.documentElement.classList.remove('opening');
         setInfo(() => tx('error') + (e && e.unsupportedExt ? tx('unsupported') + '.' + e.unsupportedExt : ((e && e.message) || e)));
         showErr(e && e.unsupportedExt ? tx('unsupported') + '.' + e.unsupportedExt : friendlyErr(e), errText(e));
@@ -2174,22 +2250,35 @@
       if (tok !== loadTok) return;
       if (model) {scene.remove(model); disposeModel(model)} // free the previous model's GPU / memory
       if (ext !== 'step' && ext !== 'stp') stopStepWorker(); // the STEP reader (and the file it holds) is not needed any more
-      const obj = new THREE.Group(); obj.add(res.obj); obj.animations = res.anims || []; // wrapper group: used to rotate Z-up models
+      { // Lights saved in the file (FBX / glTF / DAE... exported together with the scene's lamps) are not used: the viewer lights the model itself,
+        // and they would be added on top of that. A light that has children only gets switched off, so its children stay in the scene.
+        const ls = []; res.obj.traverse(o => {if (o.isLight) ls.push(o)});
+        ls.forEach(o => {if (o.children.length || !o.parent) {o.intensity = 0; o.castShadow = false} else o.parent.remove(o)});
+        if (ls.length) plog('INFO', 'ignored ' + ls.length + ' light(s) stored in the file');
+      }
+      const obj = new THREE.Group(); obj.add(res.obj); // wrapper group: used to rotate Z-up models
+      { // A clip without length (a single key frame: a stored pose) is not an animation: there is nothing to play, and the time line showed "NaN".
+        // Its pose is applied once (the helper mixer is simply left alone: stopping it would put the rest pose back).
+        const all = res.anims || [], still = all.filter(a => !(a.duration > 1e-6));
+        obj.animations = all.filter(a => a.duration > 1e-6);
+        if (still.length) {const pm = new THREE.AnimationMixer(obj); still.forEach(a => pm.clipAction(a).play()); pm.update(0); plog('INFO', 'applied ' + still.length + ' pose clip(s) without length')}
+      }
       modelExt = ext; modelName = name; document.title = name; /* the host shows it in the window title */ $('steprow').hidden = !(ext === 'step' || ext === 'stp'); upZ = (typeof ZM[ext] === 'boolean') ? ZM[ext] : ZUP_DEFAULT.includes(ext); obj.rotation.x = upZ ? -Math.PI / 2 : 0; $('upz').classList.toggle('on', upZ);
       fixNormals(obj); fixVertexColors(obj, ext);
       const isGltf = (ext === 'glb' || ext === 'gltf');
       fixTextures(obj, isGltf);
       if (!isGltf) fixAlpha(obj);
-      model = obj; scene.add(obj); buildParts(); applySolid(); applyWire(); applyShadow(); applyBF(); refreshWireVis();
+      model = obj; scene.add(obj); buildParts(); dropEmptyTextures(); applySolid(); applyWire(); applyShadow(); applyBF(); refreshWireVis();
       let nb = 0; obj.traverse(o => {if (o.isBone) nb++});
       $('skel').disabled = !nb; $('skel').classList.toggle('on', skel && nb > 0); applySkel();
       if (!(opt && opt.keepView)) frame(); // changing the STEP detail keeps the camera where it is
       let tris = 0, pts = 0, lns = 0; obj.traverse(o => {
+        if (o.userData.isWire) return; // the wireframe copy of a mesh (wireframe on when the model opens): its triangles were counted twice
         if (o.isMesh) {tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3}
         else if (o.isPoints) {pts += o.geometry.attributes.position.count}
         else if (o.isLine) {lns++}
       });
-      if (!tris && !pts && !lns) {plog('WARN', 'nothing drawable in ' + name + ' (' + mbOf(buf.byteLength) + ')'); showErr(tx('errEmpty'), name + ' · ' + mbOf(buf.byteLength))}
+      if (!tris && !pts && !lns) {plog('WARN', 'nothing drawable in ' + name + ' (' + mbOf(size) + ')'); showErr(tx('errEmpty'), name + ' · ' + mbOf(size))}
       {const na = obj.animations.length; setInfo(() => name + ' · ' + (tris ? fmtN(tris) + ' ' + tx('tris') : '') + (pts ? (tris ? ' · ' : '') + fmtN(pts) + ' ' + tx('pts') : '') + (na ? ' · ' + tx('animCnt')(na) : '') + (nb ? ' · ' + tx('boneCnt')(nb) : ''))}
       $('drop').style.display = 'none';
       mixer = new THREE.AnimationMixer(obj); actions = obj.animations.map(a => mixer.clipAction(a));
@@ -2199,6 +2288,7 @@
       $('dock').hidden = !obj.animations.length; // no animations: the timeline is never shown
       $('aw').hidden = obj.animations.length < 2; $('al').hidden = true; // the picker is hidden with 0 or 1 animation
       cur = null; pick(0);
+      if (!solid && texLoading.size) {plog('INFO', 'waiting for ' + texLoading.size + ' texture file(s)'); await texturesIn(tok); if (tok !== loadTok) return}
       if (!solid) {plog('INFO', 'uploading textures'); await ensureTextures(true)} // opened in Material mode: upload the textures now, behind the loading card (small .gltf files with big external textures never showed the card before)
       if (holoOn) await ensureHolo(true);
       if (ldOn) {showLoad('preparing', null); await paint(); try {r.compile(scene, cam)} catch (e) { } } // shader compiling also happens behind the card
@@ -2329,8 +2419,29 @@
       return m.userData[k];
     }
     const hideMat = new THREE.MeshBasicMaterial({visible: false}); // stands in for a hidden part
+    // ---- Shape keys (morph targets) ----
+    // r128: a material moves the surface with the shape keys only when it says so (morphTargets, and morphNormals when the mesh stores
+    // normals for its keys). The model's own materials do; the viewer's own ones (solid, hologram, wireframe, outline, shadow depth) get a
+    // copy that does, used for meshes that carry shape keys. The copies follow the colour / opacity / side... of their originals.
+    const morphKind = o => !(o.morphTargetInfluences && o.morphTargetInfluences.length) ? 0 : (o.geometry.morphAttributes && o.geometry.morphAttributes.normal ? 2 : 1); // 0 none | 1 keys | 2 keys with normals
+    const morphVar = new Map(); // material -> [, copy for kind 1, copy for kind 2]
+    function mv(base, o) {
+      const k = morphKind(o); if (!k) return base;
+      let vs = morphVar.get(base); if (!vs) morphVar.set(base, vs = []);
+      if (!vs[k]) {const c = base.clone(); c.onBeforeCompile = base.onBeforeCompile; c.morphTargets = true; c.morphNormals = k === 2; vs[k] = c}
+      return vs[k];
+    }
+    function syncMorphMats() { // once per drawn frame: a handful of materials at most
+      morphVar.forEach((vs, b) => vs.forEach(c => {
+        if (c.color && b.color) c.color.copy(b.color);
+        c.opacity = b.opacity; c.polygonOffset = b.polygonOffset; c.polygonOffsetFactor = b.polygonOffsetFactor; c.polygonOffsetUnits = b.polygonOffsetUnits;
+        if (c.side !== b.side) {c.side = b.side; c.needsUpdate = true}
+      }));
+    }
+    function shareKeys(copy, o) {if (morphKind(o)) {copy.morphTargetInfluences = o.morphTargetInfluences; copy.morphTargetDictionary = o.morphTargetDictionary} } // a second mesh drawn over o (wireframe, outline) moves with it
     function applySolid() {
       if (!model) return;
+      redraw();
       syncParts();
       model.traverse(o => {
         if (!o.isMesh || o.userData.isWire) return;
@@ -2339,9 +2450,9 @@
           const p = ps && ps[i];
           if (p && p.hidden) return hideMat;
           const hl = !!p && (p === hoverP || p.sel); // highlighted parts get an orange outline (drawOutline); in Hologram mode they also turn into an orange hologram
-          if (holoOn) return hl ? (skin ? holoOrgSkin : holoOrg) : (skin ? holoFillSkin : holoFill); // highlighted part: the same hologram, but orange
+          if (holoOn) return mv(hl ? (skin ? holoOrgSkin : holoOrg) : (skin ? holoFillSkin : holoFill), o); // highlighted part: the same hologram, but orange
           if (p && solid && rnd) return p.mat;
-          return solid ? solidFor(m, skin) : m;
+          return solid ? mv(solidFor(m, skin), o) : m;
         };
         o.material = Array.isArray(orig) ? orig.map(sm) : sm(orig, 0);
       });
@@ -2367,7 +2478,7 @@
     let busyOp = false;
     async function ensureHolo(keepCard) { // keepCard: called by load(), which closes the card itself
       if (!model) return;
-      const todo = []; model.traverse(o => {if (o.isMesh && !o.userData.isWire && !o.isSkinnedMesh && o.userData.he === undefined) todo.push(o)});
+      const todo = []; model.traverse(o => {if (o.isMesh && !o.userData.isWire && !o.isSkinnedMesh && !morphKind(o) && o.userData.he === undefined) todo.push(o)}); // (edge lines are worked out once: not for meshes that change shape)
       if (!todo.length) return;
       const triOf = o => {const g = o.geometry; return (g.index ? g.index.count : g.attributes.position.count) / 3};
       const heavy = todo.reduce((a, o) => a + triOf(o), 0) > BUSY_TRIS;
@@ -2399,6 +2510,7 @@
           if (!texWait.has(t)) {texWait.add(t); t.image.addEventListener('load', () => {if (!solid && !busyOp) ensureTextures()}, {once: true})}
           continue;
         }
+        if (!t.image) continue; // its picture has not arrived yet (or never will)
         try {r.initTexture(t)} catch (e) { }
         texUp.add(t);
         if (heavy && performance.now() - t0 > 40) {showLoad('texLoad', (i + 1) / list.length); await yieldUI(); t0 = performance.now()}
@@ -2420,8 +2532,9 @@
       if (mi < 0 || !g.groups.length) return total;
       return g.groups.filter(x => x.materialIndex === mi).reduce((a, x) => a + x.count / 3, 0);
     };
-    function partMat(m, col, skin) {
-      const pm = new THREE.MeshStandardMaterial({color: col, roughness: 0.85, metalness: 0, skinning: !!skin, side: m.side});
+    function partMat(m, col, o) {
+      const mk = morphKind(o);
+      const pm = new THREE.MeshStandardMaterial({color: col, roughness: 0.85, metalness: 0, skinning: !!o.isSkinnedMesh, morphTargets: mk > 0, morphNormals: mk === 2, side: m.side});
       pm.onBeforeCompile = sh => {if (pm.map) sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', 'diffuseColor.a*=texture2D(map,vUv).a;')}; // only the texture's alpha
       pm.polygonOffset = wire; pm.polygonOffsetFactor = 1; pm.polygonOffsetUnits = 1;
       return pm;
@@ -2446,7 +2559,7 @@
         const ents = [];
         slots.forEach((m, i) => {
           const h = (n * 137.508) % 360, l = 0.56 + 0.1 * ((n % 3) / 2), col = lin(new THREE.Color().setHSL(h / 360, 0.5, l).getHex()); // golden-angle hues: neighbours differ clearly
-          const pm = partMat(m, col, o.isSkinnedMesh);
+          const pm = partMat(m, col, o);
           const nm = (arr && slots.length > 1) ? ((base && (base + ' · ' + (m.name || ('#' + (i + 1))))) || m.name || '') : (base || m.name || ''); // empty: "Part N" in the current language (partName)
           const ent = {name: nm, num: n + 1, hex: '#' + new THREE.Color().setHSL(h / 360, 0.5, l).getHexString(), mat: pm, src: m, mesh: o, hidden: false, tris: partTris(o.geometry, arr ? i : -1)};
           partList.push(ent); ents.push(ent); n++;
@@ -2579,8 +2692,9 @@
       ms.forEach(o => {
         if (wire && !o.userData.wo) {
           let w;
-          if (o.isSkinnedMesh) {w = new THREE.SkinnedMesh(o.geometry, wireMatSkin); w.bind(o.skeleton, o.bindMatrix)}
-          else w = new THREE.Mesh(o.geometry, wireMat);
+          if (o.isSkinnedMesh) {w = new THREE.SkinnedMesh(o.geometry, mv(wireMatSkin, o)); w.bind(o.skeleton, o.bindMatrix)}
+          else w = new THREE.Mesh(o.geometry, mv(wireMat, o));
+          shareKeys(w, o);
           w.userData.isWire = true; w.frustumCulled = false; w.renderOrder = 1;
           o.add(w); o.userData.wo = w;
         }
@@ -2632,17 +2746,30 @@
     $('grid').onclick = () => {floorOn = !floorOn; $('grid').classList.toggle('on', floorOn); applyFloor(); saveView()};
     $('wire').onclick = () => {wire = !wire; syncWireUi(); applyWire(); saveView()};
     function syncWireUi() {$('wire').classList.toggle('on', wire); $('shw').classList.toggle('won', wire)}
+    // ---- Folder of a dropped file ----
+    // The page cannot see where a dropped (or picked) file lives. It hands the file object to the host app, which maps the file's folder to an
+    // address (as it does for a double-clicked model) and answers with it: textures, .mtl and .bin next to the model are then found without
+    // dropping them too. No answer (not inside WebView2, or a file without a real path): null, and only the dropped files are used.
+    let folderSeq = 0; const folderPend = new Map();
+    try {window.chrome.webview.addEventListener('message', ev => {const p = String(ev.data).split('|'); if (p[0] !== 'FOLDER') return; const f = folderPend.get(+p[1]); if (f) f(p.slice(2).join('|') || null)})} catch (e) { }
+    function askFolder(file) {
+      return new Promise(res => {
+        const id = ++folderSeq, done = v => {folderPend.delete(id); res(v)};
+        try {folderPend.set(id, done); window.chrome.webview.postMessageWithAdditionalObjects('DROP|' + id, [file]); setTimeout(() => done(null), 2000)} catch (e) {done(null)}
+      });
+    }
     function loadFiles(list) {
       list = [].slice.call(list || []); if (!list.length) return;
       const main = list.find(f => MODEL_EXT.indexOf(extOf(f.name)) >= 0);
       if (!main) {const nm0 = list[0].name; setInfo(() => tx('unsupported') + nm0); return }
       blobUrls.forEach(u => URL.revokeObjectURL(u)); blobUrls = [];
-      ctx = {base: null, files: new Map()}; srcReread = () => main.arrayBuffer();
+      const c = ctx = {base: null, files: new Map()}; srcReread = () => main.arrayBuffer();
+      const folder = askFolder(main).then(b => {c.base = b}); // dropped helper files still come first, the folder fills in the rest
       list.forEach(f => {if (f !== main) {const u = URL.createObjectURL(f); blobUrls.push(u); ctx.files.set(f.name.toLowerCase(), u)} }); // .mtl, .bin, textures
       const fr = new FileReader();
       ldOn = main.size > BIG; showLoad('reading', 0, main.name);
       fr.onprogress = e => {if (e.lengthComputable) showLoad('reading', e.loaded / e.total)};
-      fr.onload = () => load(fr.result, main.name);
+      fr.onload = () => folder.then(() => load(fr.result, main.name));
       fr.onerror = () => {const m = (fr.error && fr.error.message) || ''; plog('ERROR', 'file read failed: ' + main.name + ' (' + mbOf(main.size) + '): ' + m); hideLoad(); setInfo(() => tx('error') + m); showErr(tx('errGen'), m)};
       plog('INFO', 'reading ' + main.name + ' (' + mbOf(main.size) + ')');
       fr.readAsArrayBuffer(main);
@@ -2679,7 +2806,9 @@
     let lastH = {x: 0, z: 1}; // last horizontal direction of the camera (remembered so it does not spin at the pole)
     const FRONT = 0.995; // an end facing the camera more than this is treated as inactive
     function drawGizmo() {
-      const d = devicePixelRatio; gx.setTransform(d, 0, 0, d, 0, 0); gx.clearRect(0, 0, GS, GS);
+      const d = devicePixelRatio, gp = Math.round(GS * d);
+      if (gz.width !== gp) gz.width = gz.height = gp; // screen scaling changed
+      gx.setTransform(d, 0, 0, d, 0, 0); gx.clearRect(0, 0, GS, GS);
       const q = cam.quaternion.clone().invert();
       gItems = [];
       AX.forEach(a => [1, -1].forEach(s => {
@@ -2689,7 +2818,7 @@
       gItems.sort((p, k) => p.z - k.z);
       gx.textAlign = 'center'; gx.textBaseline = 'middle';
       gItems.forEach(it => {
-        const pos = it.s > 0, hov = gHover === it;
+        const pos = it.s > 0, hov = !!gHover && gHover.a === it.a && gHover.s === it.s; // (the list is rebuilt on every draw: compare axis + side, not the object)
         const rad = pos ? 11 : 8;
         if (it.z > FRONT) { // we are looking exactly along this axis: inactive, hollow ring
           gx.globalAlpha = 0.9; gx.strokeStyle = it.a.c; gx.lineWidth = 2;
@@ -2715,8 +2844,8 @@
       if (a.dot(b) < -0.9999) {const ax = Math.abs(a.y) > 0.99 ? new THREE.Vector3(lastH.z, 0, -lastH.x) : new THREE.Vector3(0, 1, 0); return new THREE.Quaternion().setFromAxisAngle(ax, Math.PI)}
       return new THREE.Quaternion().setFromUnitVectors(a, b);
     }
-    gz.addEventListener('pointermove', e => {gHover = gizmoHit(e); gz.style.cursor = gHover ? 'pointer' : 'default'});
-    gz.addEventListener('pointerleave', () => {gHover = null});
+    gz.addEventListener('pointermove', e => {gHover = gizmoHit(e); gz.style.cursor = gHover ? 'pointer' : 'default'; redraw()});
+    gz.addEventListener('pointerleave', () => {gHover = null; redraw()});
     gz.addEventListener('click', e => {
       const it = gizmoHit(e); if (!it) return;
       const dir = it.a.v.clone().multiplyScalar(it.s);
@@ -2995,7 +3124,7 @@
         if (o.isMesh && !o.userData.isWire) {
           o.castShadow = on && !(o.material && !Array.isArray(o.material) && o.material.userData.glass); o.receiveShadow = on;
           const m = origOf(o);
-          o.customDepthMaterial = (on && !Array.isArray(m) && m.map && (m.alphaTest > 0 || m.transparent || m.userData.alphaMode)) ? depthFor(m, o.isSkinnedMesh) : undefined;
+          o.customDepthMaterial = (on && !Array.isArray(m) && m.map && (m.alphaTest > 0 || m.transparent || m.userData.alphaMode)) ? mv(depthFor(m, o.isSkinnedMesh), o) : undefined;
         }
       });
       shGround.visible = on && !floorOn; // floor on: the floor surface receives the shadow itself | floor off: an invisible plane shows only the shadow
@@ -3045,9 +3174,11 @@
     applyFloor(); applyLang(false);
 
     const clock = new THREE.Clock();
-    let fpsN = 0, fpsT = performance.now(), fpsOn = true;
+    // FPS = how fast frames are drawn while the picture is changing. Only the time between two frames drawn one after the other is
+    // counted; while the window is idle (nothing drawn) the last value stays.
+    let fpsN = 0, fpsAcc = 0, fpsPrev = 0, fpsOn = true; // frames counted | their total time (ms) | time of the previous frame (0 = it was not drawn)
     try {fpsOn = localStorage.getItem('pp3d.fps') !== '0'} catch (e) { }
-    function applyFps() {$('fps').hidden = !fpsOn; $('fpsb').classList.toggle('on', fpsOn); fpsN = 0; fpsT = performance.now()}
+    function applyFps() {$('fps').hidden = !fpsOn; $('fpsb').classList.toggle('on', fpsOn); fpsN = 0; fpsAcc = 0; fpsPrev = 0}
     $('fpsb').onclick = () => {fpsOn = !fpsOn; try {localStorage.setItem('pp3d.fps', fpsOn ? '1' : '0')} catch (e) { } applyFps()};
     applyFps();
     // ---- Outline (Blender style) ----
@@ -3098,12 +3229,12 @@
       roles.forEach((a, o) => {
         let mm = outCache.get(o);
         if (!mm || mm.geometry !== o.geometry) {
-          mm = o.isSkinnedMesh ? new THREE.SkinnedMesh(o.geometry, outNone) : new THREE.Mesh(o.geometry, outNone);
+          mm = o.isSkinnedMesh ? new THREE.SkinnedMesh(o.geometry, outNone) : new THREE.Mesh(o.geometry, outNone); shareKeys(mm, o);
           mm.frustumCulled = false; mm.matrixAutoUpdate = false;
           if (o.isSkinnedMesh) mm.bind(o.skeleton, o.bindMatrix);
           outCache.set(o, mm);
         }
-        const tab = o.isSkinnedMesh ? outMatSkin : outMat, slot = k => k ? tab[k] : outNone;
+        const tab = o.isSkinnedMesh ? outMatSkin : outMat, slot = k => k ? mv(tab[k], o) : outNone;
         mm.material = Array.isArray(origOf(o)) ? a.map(slot) : slot(a[0]);
         mm.matrix.copy(o.matrixWorld); // the scene updates matrixWorld from this (it has no parent)
         outScene.add(mm);
@@ -3118,8 +3249,11 @@
       r.autoClear = false; r.render(outQuad, outQCam); r.autoClear = ac;
     }
     (function loop() {
-      requestAnimationFrame(loop); const d = clock.getDelta();
-      if (fpsOn) {fpsN++; const t = performance.now(); if (t - fpsT >= 500) {$('fps').textContent = Math.round(fpsN * 1000 / (t - fpsT)) + ' FPS'; fpsN = 0; fpsT = t} } gridFade();
+      requestAnimationFrame(loop); const d = clock.getDelta(); // (read every time: after an idle period the animation must not jump ahead)
+      if (r.getPixelRatio() !== devicePixelRatio) resize(); // the scaling can change without a resize event
+      if (!(wake > 0 || camAnim || focusAnim || (mixer && cur && playing))) {fpsPrev = 0; return} // nothing changed: keep the picture that is on screen
+      if (wake > 0) wake--;
+      if (fpsOn) {const t = performance.now(); if (fpsPrev) {fpsAcc += t - fpsPrev; fpsN++} fpsPrev = t; if (fpsAcc >= 500) {$('fps').textContent = Math.round(fpsN * 1000 / fpsAcc) + ' FPS'; fpsN = 0; fpsAcc = 0} } gridFade();
       if (mixer) {mixer.update(playing ? d : 0); if (cur && playing) updateUI()}
       {const o = cam.position.clone().sub(ctl.target), hl = Math.hypot(o.x, o.z); if (hl > o.length() * 1e-4) {lastH.x = o.x / hl; lastH.z = o.z / hl} }
       if (camAnim) {
@@ -3139,7 +3273,7 @@
       }
       updateWireFade();
       updateSkelPoints();
-      ctl.update(); if (L.follow) updateLightDir(); r.render(scene, cam); drawOutline(); drawGizmo()
+      ctl.update(); if (L.follow) updateLightDir(); syncMorphMats(); r.render(scene, cam); drawOutline(); drawGizmo()
     })();
   </script>
 </body>

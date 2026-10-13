@@ -31,7 +31,7 @@ Download from the **Releases** page:
 - Double-click a model, drag and drop it onto the window, or use the folder button at the top left.
 - Left-drag rotates, right-drag pans, the wheel zooms. Double-click empty space to fit the model to the window.
 - Buttons with a ◢ mark in their bottom-right corner have their own settings panel. Click that corner or right-click the button to open it.
-- Textures and `.mtl` / `.bin` files are read automatically from the model's folder. When you drag and drop, drop them together with the model.
+- Textures and `.mtl` / `.bin` files are read automatically from the model's folder. This also works when you drag and drop only the model file.
 
 | Shortcut | Action |
 |---|---|

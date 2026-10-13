@@ -31,7 +31,7 @@ Windows için küçük ve hızlı bir 3D model görüntüleyici. Sunucu, tarayı
 - Modele çift tıkla, pencereye sürükle-bırak yap ya da sol üstteki klasör düğmesini kullan.
 - Sol tık döndürür, sağ tık kaydırır, tekerlek yakınlaştırır. Boş alana çift tık modeli ekrana sığdırır.
 - Sağ alt köşesinde ◢ işareti olan düğmelerin kendi ayar paneli var. Panel o köşeye tıklayınca ya da sağ tıkla açılır.
-- Dokular ve `.mtl` / `.bin` dosyaları modelin klasöründen otomatik okunur. Sürükle-bırak ile açıyorsan bu dosyaları da modelle birlikte bırak.
+- Dokular ve `.mtl` / `.bin` dosyaları modelin klasöründen otomatik okunur. Sadece model dosyasını sürükleyip bıraktığında da böyledir.
 
 | Kısayol | İşlev |
 |---|---|

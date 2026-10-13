@@ -95,14 +95,16 @@ namespace PolyPeek3D
         // Virtual addresses: there is no real server, WebView2 maps these hosts straight to folders.
         // NOTE: do not use a ".local" suffix, Windows tries to resolve it on the network and waits ~2 s.
         const string Host = "https://polypeek3d.example/";       // viewer.html + js files
-        const string ModelHost = "https://polypeek3dmodel.example/";   // folder of the opened model (textures, .mtl, .bin are read from here)
+        const string ModelHostName = "polypeek3dmodel.example";
+        const string ModelHost = "https://" + ModelHostName + "/";   // folder of the opened model (textures, .mtl, .bin are read from here)
 
         readonly string modelPath;
         readonly WebView2 wv;
 
         public MainForm(string file)
         {
-            modelPath = (!string.IsNullOrEmpty(file) && File.Exists(file)) ? file : null;
+            // full path: a relative one ("PolyPeek3D model.glb" from a command prompt) has no folder part to map as the model host
+            modelPath = (!string.IsNullOrEmpty(file) && File.Exists(file)) ? Path.GetFullPath(file) : null;
 
             Text = (modelPath != null ? Path.GetFileName(modelPath) + " - " : "") + AppTitle;
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
@@ -193,6 +195,7 @@ namespace PolyPeek3D
                 else if (body == "DEVTOOLS") { try { wv.CoreWebView2.OpenDevToolsWindow(); } catch { } } // F12 / Ctrl+Shift+I (the browser's own shortcut is off)
                 return;
             }
+            if (lv == "DROP") { OnDrop(body, e); return; }
             if (lv == "OPEN")
             {
                 int k = body.LastIndexOf('|');
@@ -202,6 +205,75 @@ namespace PolyPeek3D
             }
             if (lv == "INFO") lastInfo = body;
             Log.Write(lv, body);
+        }
+
+        // A file dropped onto the window (or picked with the folder button): the page cannot see where it lives, so it hands the file
+        // object over. The page gets an address for the file's folder back, and textures, .mtl and .bin next to the model are then found
+        // without dropping them too.
+        // The files are served by OnDropResource below: a folder mapping (as used for a double-clicked model) only takes effect for pages
+        // loaded after it was set, and the page must not be reloaded here.
+        // Every drop gets a host name of its own (m1.., m2..): a file with the same name in another folder must not come from the cache.
+        int dropSeq;
+        string dropHost, dropDir;
+
+        void OnDrop(string id, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            string url = "";
+            try
+            {
+                var objs = e.AdditionalObjects;
+                var f = (objs != null && objs.Count > 0) ? objs[0] as CoreWebView2File : null;
+                string dir = (f != null && !string.IsNullOrEmpty(f.Path)) ? Path.GetDirectoryName(Path.GetFullPath(f.Path)) : null;
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                {
+                    dropDir = dir.EndsWith("\\") ? dir : dir + "\\";
+                    dropHost = "m" + (++dropSeq) + "." + ModelHostName;
+                    url = "https://" + dropHost + "/";
+                }
+            }
+            catch (Exception ex) { Log.Write("WARN", "dropped file: its folder could not be used: " + ex.Message); }
+            try { wv.CoreWebView2.PostWebMessageAsString("FOLDER|" + id + "|" + url); } catch { } // empty address: the page uses only the dropped files
+        }
+
+        const string DropHeaders = "Access-Control-Allow-Origin: *\nCache-Control: no-store"; // the page lives on another (virtual) host
+
+        static string MimeOf(string path)
+        {
+            switch (Path.GetExtension(path).ToLowerInvariant())
+            {
+                case ".png": return "image/png";
+                case ".jpg": case ".jpeg": return "image/jpeg";
+                case ".webp": return "image/webp";
+                case ".gif": return "image/gif";
+                case ".bmp": return "image/bmp";
+                case ".svg": return "image/svg+xml";
+                case ".gltf": case ".json": return "application/json";
+                case ".mtl": return "text/plain";
+                default: return "application/octet-stream";
+            }
+        }
+
+        // Serves the files of the dropped model's folder (and its subfolders, nothing outside it) to the page.
+        void OnDropResource(object sender, CoreWebView2WebResourceRequestedEventArgs e)
+        {
+            var env = wv.CoreWebView2.Environment;
+            try
+            {
+                var u = new Uri(e.Request.Uri);
+                if (dropDir != null && string.Equals(u.Host, dropHost, StringComparison.OrdinalIgnoreCase))
+                {
+                    string rel = Uri.UnescapeDataString(u.AbsolutePath).TrimStart('/').Replace('/', '\\');
+                    string full = Path.GetFullPath(Path.Combine(dropDir, rel));
+                    if (full.StartsWith(dropDir, StringComparison.OrdinalIgnoreCase) && File.Exists(full))
+                    {
+                        var fs = new FileStream(full, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                        e.Response = env.CreateWebResourceResponse(fs, 200, "OK", DropHeaders + "\nContent-Type: " + MimeOf(full));
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex) { Log.Write("WARN", "dropped model: a file next to it could not be read: " + ex.Message); }
+            e.Response = env.CreateWebResourceResponse(null, 404, "Not Found", DropHeaders);
         }
 
         void OnProcessFailed(object sender, CoreWebView2ProcessFailedEventArgs e)
@@ -301,11 +373,13 @@ namespace PolyPeek3D
             core.NewWindowRequested += (s, e) => e.Handled = true;
             core.WebMessageReceived += OnWebMessage;   // log lines + commands from the page
             core.ProcessFailed += OnProcessFailed;     // the page's renderer process died (for example out of memory)
+            core.AddWebResourceRequestedFilter("https://*." + ModelHostName + "/*", CoreWebView2WebResourceContext.All);
+            core.WebResourceRequested += OnDropResource; // files next to a dropped model
 
             // WebView2's own (local, fast) file serving
             core.SetVirtualHostNameToFolderMapping("polypeek3d.example", WebDir, CoreWebView2HostResourceAccessKind.Allow);
             if (modelPath != null)
-                core.SetVirtualHostNameToFolderMapping("polypeek3dmodel.example", Path.GetDirectoryName(modelPath), CoreWebView2HostResourceAccessKind.Allow);
+                core.SetVirtualHostNameToFolderMapping(ModelHostName, Path.GetDirectoryName(modelPath), CoreWebView2HostResourceAccessKind.Allow);
 
             string url = Host + "viewer.html";
             if (modelPath != null)
