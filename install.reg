@@ -1,0 +1,197 @@
+Windows Registry Editor Version 5.00
+
+; Developer install (Install.bat): file associations for C:\PolyPeek3D, current user only.
+; Keep the format table in step with installer\PolyPeek3D.iss and portable\Associate-Files.bat.
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.fbx\UserChoice]
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.fbx\UserChoiceLatest]
+
+[HKEY_CURRENT_USER\Software\Classes\.fbx]
+@="PolyPeek3D.fbx"
+
+[HKEY_CURRENT_USER\Software\Classes\.fbx\OpenWithProgids]
+"PolyPeek3D.fbx"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.fbx]
+@="FBX 3D Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.fbx\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\fbx.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.fbx\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.glb\UserChoice]
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.glb\UserChoiceLatest]
+
+[HKEY_CURRENT_USER\Software\Classes\.glb]
+@="PolyPeek3D.glb"
+
+[HKEY_CURRENT_USER\Software\Classes\.glb\OpenWithProgids]
+"PolyPeek3D.glb"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.glb]
+@="GLB 3D Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.glb\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\glb.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.glb\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.gltf\UserChoice]
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.gltf\UserChoiceLatest]
+
+[HKEY_CURRENT_USER\Software\Classes\.gltf]
+@="PolyPeek3D.gltf"
+
+[HKEY_CURRENT_USER\Software\Classes\.gltf\OpenWithProgids]
+"PolyPeek3D.gltf"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.gltf]
+@="glTF 3D Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.gltf\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\gltf.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.gltf\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.obj\UserChoice]
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.obj\UserChoiceLatest]
+
+[HKEY_CURRENT_USER\Software\Classes\.obj]
+@="PolyPeek3D.obj"
+
+[HKEY_CURRENT_USER\Software\Classes\.obj\OpenWithProgids]
+"PolyPeek3D.obj"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.obj]
+@="OBJ 3D Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.obj\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\obj.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.obj\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.ply\UserChoice]
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.ply\UserChoiceLatest]
+
+[HKEY_CURRENT_USER\Software\Classes\.ply]
+@="PolyPeek3D.ply"
+
+[HKEY_CURRENT_USER\Software\Classes\.ply\OpenWithProgids]
+"PolyPeek3D.ply"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.ply]
+@="PLY 3D Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.ply\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\ply.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.ply\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.dae\UserChoice]
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.dae\UserChoiceLatest]
+
+[HKEY_CURRENT_USER\Software\Classes\.dae]
+@="PolyPeek3D.dae"
+
+[HKEY_CURRENT_USER\Software\Classes\.dae\OpenWithProgids]
+"PolyPeek3D.dae"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.dae]
+@="DAE 3D Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.dae\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\dae.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.dae\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.3ds\UserChoice]
+
+[-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.3ds\UserChoiceLatest]
+
+[HKEY_CURRENT_USER\Software\Classes\.3ds]
+@="PolyPeek3D.3ds"
+
+[HKEY_CURRENT_USER\Software\Classes\.3ds\OpenWithProgids]
+"PolyPeek3D.3ds"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.3ds]
+@="3DS 3D Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.3ds\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\3ds.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.3ds\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
+
+[HKEY_CURRENT_USER\Software\Classes\.stl\OpenWithProgids]
+"PolyPeek3D.stl"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.stl]
+@="STL 3D Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.stl\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\stl.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.stl\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
+
+[HKEY_CURRENT_USER\Software\Classes\.3mf\OpenWithProgids]
+"PolyPeek3D.3mf"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.3mf]
+@="3MF 3D Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.3mf\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\generic.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.3mf\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
+
+[HKEY_CURRENT_USER\Software\Classes\.amf\OpenWithProgids]
+"PolyPeek3D.amf"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.amf]
+@="AMF 3D Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.amf\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\generic.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.amf\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
+
+[HKEY_CURRENT_USER\Software\Classes\.stp\OpenWithProgids]
+"PolyPeek3D.stp"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.stp]
+@="STEP CAD Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.stp\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\generic.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.stp\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
+
+[HKEY_CURRENT_USER\Software\Classes\.step\OpenWithProgids]
+"PolyPeek3D.step"=""
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.step]
+@="STEP CAD Model"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.step\DefaultIcon]
+@="C:\\PolyPeek3D\\icons\\generic.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\PolyPeek3D.step\shell\open\command]
+@="\"C:\\PolyPeek3D\\PolyPeek3D.exe\" \"%1\""
